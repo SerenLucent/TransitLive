@@ -9,8 +9,8 @@ function rebuildStations(){
   stations.replaceChildren();
   names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i,true);stations.append(button)});
 }
-function changeLine(number,routeIndex=0){
-  currentLine=LINES[number];document.title='Transit Live · '+currentLine.name;currentRoute=currentLine.routes[routeIndex];names=currentRoute.names.slice();selected=0;
+function changeLine(number,routeIndex=0,stationName=null){
+  currentLine=LINES[number];document.title='Transit Live · '+currentLine.name;currentRoute=currentLine.routes[routeIndex];names=currentRoute.names.slice();selected=Math.max(0,names.indexOf(stationName));
   document.documentElement.style.setProperty('--green',currentLine.color);
   document.querySelectorAll('[data-line]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.line)===number);b.setAttribute('aria-pressed',Number(b.dataset.line)===number?'true':'false')});
   document.querySelector('#route-picker').replaceChildren();currentLine.routes.forEach((r,i)=>{const option=document.createElement('option');option.value=i;option.textContent=r.name;document.querySelector('#route-picker').append(option)});document.querySelector('#route-picker').value=routeIndex;
@@ -24,10 +24,11 @@ function changeLine(number,routeIndex=0){
   document.querySelector('#legend-line-name').textContent=currentLine.name;
   document.querySelector('.loop-note').textContent=currentRoute.oneWay?'→ 응암 순환 구간 · 한 방향 운행':currentRoute.loop?'↻ 끝과 끝이 이어지는 순환 노선':'선택 구간: '+currentRoute.name;
   document.querySelector('#search').value='';document.querySelector('#results').hidden=true;
-  rebuildStations();layout();select(0);
+  rebuildStations();layout();select(selected);
+  if(window.updateLineMatches)window.updateLineMatches();
   if(window.changeLiveLine)window.changeLiveLine();
 }
-Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.dataset.extended=line.number>9?'true':'false';b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.badge+'</b><span>'+line.name+'</span>';b.onclick=()=>changeLine(line.number);document.querySelector('#line-buttons').append(b)});
+Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.dataset.extended=line.number>9?'true':'false';b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.badge+'</b><span>'+line.name+'</span>';b.onclick=()=>window.chooseLineFromSearch?window.chooseLineFromSearch(line.number):changeLine(line.number);document.querySelector('#line-buttons').append(b)});
 document.querySelector('#route-picker').onchange=e=>changeLine(currentLine.number,Number(e.target.value));
 function layout(){
   const w=map.clientWidth,compact=w<600,left=compact?46:80,right=w-(compact?30:50),top=compact?45:65;
@@ -63,7 +64,7 @@ function positionAt(p){
 }
 function frame(now){if(!document.hidden&&!paused&&window.paintLive)window.paintLive(now);requestAnimationFrame(frame)}
 document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'▷ 움직임 재개':'Ⅱ 움직임 멈추기';renderDetail()};
-const search=document.querySelector('#search'),results=document.querySelector('#results');search.addEventListener('input',()=>{const q=search.value.trim().replace(/역$/,'');results.hidden=!q;if(!q)return;const matches=names.map((n,i)=>({n,i})).filter(x=>x.n.includes(q));results.replaceChildren();if(!matches.length){const e=document.createElement('div');e.className='empty';e.textContent='현재 선택 구간에서 역을 찾을 수 없어요.';results.append(e)}matches.forEach(({n,i})=>{const b=document.createElement('button');b.textContent=currentLine.number+'호선 · '+n;b.onclick=()=>{select(i,true);results.hidden=true;search.value=n;search.blur()};results.append(b)})});search.addEventListener('keydown',e=>{if(e.key==='Escape')results.hidden=true;if(e.key==='Enter'){const b=results.querySelector('button');if(b)b.click()}});document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))results.hidden=true});document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();search.focus()}});document.addEventListener('visibilitychange',()=>{last=performance.now()});
+const search=document.querySelector('#search'),results=document.querySelector('#results');search.addEventListener('input',()=>{const q=search.value.trim().replace(/역$/,'');results.hidden=!q;if(!q)return;const matches=names.map((n,i)=>({n,i})).filter(x=>x.n.includes(q));results.replaceChildren();if(!matches.length){const e=document.createElement('div');e.className='empty';e.textContent='현재 선택 구간에서 역을 찾을 수 없어요.';results.append(e)}matches.forEach(({n,i})=>{const b=document.createElement('button');b.textContent=currentLine.name+' · '+(n==='서울'?'서울역':n);b.onclick=()=>{select(i,true);results.hidden=true;search.value=n;search.blur()};results.append(b)})});search.addEventListener('keydown',e=>{if(e.key==='Escape')results.hidden=true;if(e.key==='Enter'){const b=results.querySelector('button');if(b)b.click()}});document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))results.hidden=true});document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();search.focus()}});document.addEventListener('visibilitychange',()=>{last=performance.now()});
 function clock(){document.querySelector('#clock').textContent=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date())}changeLine(2);select(21);clock();setInterval(()=>{clock();if(!paused&&!document.hidden)renderDetail()},1000);window.addEventListener('resize',layout);requestAnimationFrame(frame);
 
 
