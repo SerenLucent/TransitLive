@@ -107,6 +107,8 @@
 #network-results button small{display:block;font-size:10px;color:#8a9a8e;margin-top:4px;line-height:1.6}
 #network-results button:focus-visible{outline:2px solid #16834f;outline-offset:-3px;background:#edf7f0}
 #line-buttons button.line-match{border-color:#efc62f;color:#735b0d;box-shadow:0 0 0 2px #ffe36885,0 0 14px #f6d53f75;background:#fffdf0}
+#line-buttons button.line-match{border-color:#dca900;background:#fff4b8;color:#594000;box-shadow:inset 0 0 0 2px #e4b000,0 0 0 3px #edbd12,0 0 13px #f0c52699;font-weight:800}
+#line-buttons button.active:not(.line-match){box-shadow:inset 0 0 0 2px var(--tab-color),0 0 0 2px var(--tab-color);font-weight:800}
 .arrival.train-recommended{border:2px solid #eac134;background:#fffdf1;box-shadow:0 0 8px #f5d55435}
 .short-turn-tag{display:inline-block;padding:2px 5px;border-radius:4px;background:#fff0d2;color:#9a620d;font-size:9px;font-weight:600}
 .arrival .terminus-label{color:#607769}
