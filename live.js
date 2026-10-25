@@ -5,7 +5,7 @@ const wrap = p => currentRoute.loop?(p%names.length+names.length)%names.length:M
 const arrivalKey=()=>currentLine.number+':'+names[selected];
 const stamp = t => new Date(t).toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour12:false});
 function requestLive(action, station='') {
-  const line=currentLine.number;
+  const line=currentLine.number,lineName=currentLine.name;
   const id=line+':'+action+station;
   if(live.pending.has(id))return live.pending.get(id);
   const promise=new Promise((resolve,reject)=>{
@@ -13,7 +13,7 @@ function requestLive(action, station='') {
     const script=document.createElement('script');
     const clean=()=>{clearTimeout(timer);delete window[cb];script.remove()};
     const timer=setTimeout(()=>{clean();reject(new Error('연결 시간 초과 · 배포 권한을 확인해주세요'))},20000);
-    window[cb]=data=>{clean();if(data.ok&&data.line!==line+'호선'){reject(new Error('Apps Script를 다중 호선 버전으로 업데이트해주세요'));return}if(!data.ok)reject(new Error(({DAILY_LIMIT:'오늘의 API 호출 한도에 도달했어요',MISSING_KEY:'Apps Script 인증키 설정을 확인해주세요',UPSTREAM_UNAVAILABLE:'서울시 데이터 응답을 확인할 수 없어요',BUSY:'다른 요청 처리 중 · 잠시 후 재시도합니다'})[data.error]||'데이터를 가져오지 못했어요'));else resolve(data)};
+    window[cb]=data=>{clean();if(data.ok&&data.line!==lineName){reject(new Error('Apps Script를 다중 호선 버전으로 업데이트해주세요'));return}if(!data.ok)reject(new Error(({DAILY_LIMIT:'오늘의 API 호출 한도에 도달했어요',MISSING_KEY:'Apps Script 인증키 설정을 확인해주세요',UPSTREAM_UNAVAILABLE:'서울시 데이터 응답을 확인할 수 없어요',BUSY:'다른 요청 처리 중 · 잠시 후 재시도합니다'})[data.error]||'데이터를 가져오지 못했어요'));else resolve(data)};
     script.onerror=()=>{clean();reject(new Error('Apps Script에 연결할 수 없어요'))};
     const url=new URL(API_URL);url.searchParams.set('action',action);url.searchParams.set('callback',cb);url.searchParams.set('line',line);if(station)url.searchParams.set('station',station);script.src=url.href;document.head.append(script);
   }).finally(()=>live.pending.delete(id));
@@ -26,7 +26,10 @@ function installPositions(data){
     const canonical=currentLine.stations.find(s=>s.id&&s.id===r.statnId);
     const i=names.indexOf(canonical?canonical.name:normalizeStation(r.statnNm));if(i<0)return [];
     // Along the listed station order, inner-circle trains advance; outer reverse.
-    const sign=currentRoute.oneWay?1:String(r.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1,status=String(r.trainSttus);
+    let sign=currentRoute.oneWay?1:String(r.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1;
+    const terminus=names.indexOf(normalizeStation(r.statnTnm));
+    if(!currentRoute.loop&&terminus>=0&&terminus!==i)sign=terminus>i?1:-1;
+    const status=String(r.trainSttus);
     const target=wrap(i+(status==='0'?-sign*.15:status==='2'?sign*.15:status==='3'?-sign*.65:0));
     const id=String(r.trainNo)+':'+r.updnLine,previous=old.get(id);
     const from=previous?modelPosition(previous,now):target;
@@ -46,10 +49,11 @@ window.paintLive=now=>{
 };
 function dataOld(data){return data && (data.stale||Date.now()-data.updatedAt>90000)}
 function updateStatus(){
-  const data=live.positions;
-  document.querySelector('.demo').textContent=paused?'갱신 일시정지':live.error?'연결 확인 필요':!data?'실시간 연결 중':dataOld(data)?'이전 수신 정보':'실시간 데이터';
+  const arrivalOnly=currentLine.positions===false;
+  const data=arrivalOnly?live.arrivals.get(arrivalKey()):live.positions;
+  document.querySelector('.demo').textContent=paused?'갱신 일시정지':live.error?'연결 확인 필요':!data?'실시간 연결 중':dataOld(data)?'이전 수신 정보':arrivalOnly?'도착정보 전용':'실시간 데이터';
   const countdown=paused?'갱신 일시정지':document.hidden?'화면 대기 중':live.busy?'갱신 중…':live.nextRefreshAt?`자동갱신 ${Math.max(0,Math.ceil((live.nextRefreshAt-Date.now())/1000))}초 후`:'연결 대기 중';
-  const status=data?`${dataOld(data)?'이전 정보':'위치 갱신'} ${stamp(data.updatedAt)} · 현재 구간 ${live.models.length}대`:'실제 열차 위치를 불러오는 중…';
+  const status=arrivalOnly?(data?'도착정보 갱신 '+stamp(data.updatedAt):'도착정보를 불러오는 중…'):data?`${dataOld(data)?'이전 정보':'위치 갱신'} ${stamp(data.updatedAt)} · 현재 구간 ${live.models.length}대`:'실제 열차 위치를 불러오는 중…';
   document.querySelector('.map-description span').innerHTML=`${esc(status)} <span class="refresh-countdown">· ${esc(countdown)}</span>${live.error?' · '+esc(live.error):''}`;
 }
 function destinationRoute(origin, destination){
@@ -89,7 +93,7 @@ async function pollLive(){
   if(document.hidden||paused||live.busy)return;
   const revision=live.revision;
   live.busy=true;live.nextRefreshAt=0;updateStatus();
-  try{const data=await requestLive('positions');if(revision!==live.revision)return;installPositions(data);live.error=''}catch(e){if(revision!==live.revision)return;live.error=e.message}
+  if(currentLine.positions!==false){try{const data=await requestLive('positions');if(revision!==live.revision)return;installPositions(data);live.error=''}catch(e){if(revision!==live.revision)return;live.error=e.message}}
   await loadArrivals();if(revision!==live.revision)return;live.busy=false;
   if(!document.hidden&&!paused){live.nextRefreshAt=Date.now()+30000;live.timer=setTimeout(pollLive,30000)}
   renderDetail();

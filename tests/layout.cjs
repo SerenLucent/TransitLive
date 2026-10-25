@@ -15,4 +15,4 @@ for(const line of Object.values(lc.lines))for(const route of line.routes)for(con
  
 }
 
-console.log("PASS all 9 lines / branches at 4 viewport widths: station alignment, endpoints, tracks within width");
+console.log("PASS all supported lines / branches at 4 viewport widths: station alignment, endpoints, tracks within width");

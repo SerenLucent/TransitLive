@@ -15,7 +15,11 @@ function changeLine(number,routeIndex=0){
   document.querySelectorAll('[data-line]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.line)===number);b.setAttribute('aria-pressed',Number(b.dataset.line)===number?'true':'false')});
   document.querySelector('#route-picker').replaceChildren();currentLine.routes.forEach((r,i)=>{const option=document.createElement('option');option.value=i;option.textContent=r.name;document.querySelector('#route-picker').append(option)});document.querySelector('#route-picker').value=routeIndex;
   document.querySelector('#map-line-title').textContent=currentLine.name;
-  document.querySelector('#map-line-badge').textContent=currentLine.number;
+  document.querySelector('#map-line-badge').textContent=currentLine.badge;
+  const arrivalOnly=currentLine.positions===false;
+  document.querySelector('#position-notice').hidden=!arrivalOnly;
+  document.querySelector('#position-notice').textContent=arrivalOnly?currentLine.name+'은 실시간 열차 위치를 표시하지 않습니다. 역을 선택하면 도착정보를 확인할 수 있어요.':'';
+  document.querySelector('#train-legend').hidden=arrivalOnly;
   document.querySelector('#route-station-count').textContent=names.length+'개 역';
   document.querySelector('#legend-line-name').textContent=currentLine.name;
   document.querySelector('.loop-note').textContent=currentRoute.oneWay?'→ 응암 순환 구간 · 한 방향 운행':currentRoute.loop?'↻ 끝과 끝이 이어지는 순환 노선':'선택 구간: '+currentRoute.name;
@@ -23,7 +27,7 @@ function changeLine(number,routeIndex=0){
   rebuildStations();layout();select(0);
   if(window.changeLiveLine)window.changeLiveLine();
 }
-Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.number+'</b><span>'+line.name+'</span>';b.onclick=()=>changeLine(line.number);document.querySelector('#line-buttons').append(b)});
+Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.dataset.extended=line.number>9?'true':'false';b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.badge+'</b><span>'+line.name+'</span>';b.onclick=()=>changeLine(line.number);document.querySelector('#line-buttons').append(b)});
 document.querySelector('#route-picker').onchange=e=>changeLine(currentLine.number,Number(e.target.value));
 function layout(){
   const w=map.clientWidth,compact=w<600,left=compact?46:80,right=w-(compact?30:50),top=compact?45:65;
@@ -37,7 +41,7 @@ function layout(){
   map.style.height=h+'px';
   map.style.setProperty('--station-width',Math.min(80,(right-left)/Math.max(1,Math.max(...counts)-1)-3)+'px');
   points=[];
-  counts.forEach((count,row)=>{for(let col=0;col<count;col++)points.push({x:row%2?right-col*(right-left)/Math.max(1,count-1):left+col*(right-left)/(count-1),y:top+row*step})});
+  counts.forEach((count,row)=>{for(let col=0;col<count;col++)points.push({x:row%2?right-col*(right-left)/Math.max(1,count-1):left+col*(right-left)/Math.max(1,count-1),y:top+row*step})});
   segments=points.slice(0,currentRoute.loop?points.length:points.length-1).map((a,i)=>{
     const b=points[(i+1)%points.length];
     if(i===points.length-1)return {a,b,c:{x:0,y:a.y},d:{x:0,y:b.y}};

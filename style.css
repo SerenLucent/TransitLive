@@ -89,3 +89,13 @@
  .route-controls{padding:0 15px 12px}
  #station-panel>.detail-eyebrow{flex-wrap:wrap}
 }
+.position-notice{margin:0 24px 14px;padding:11px 13px;border:1px solid #e5cf83;background:#fff9e5;color:#806620;border-radius:8px;font-size:11px;line-height:1.8}
+.position-notice[hidden],#train-legend[hidden]{display:none}
+#map-line-badge{width:auto;min-width:25px;padding:0 7px;font-size:11px;white-space:nowrap}
+#line-buttons button[data-extended="true"] b{width:auto;min-width:28px;padding:0 7px;border-radius:5px;font-size:10px}
+#line-buttons button[data-extended="true"] span{display:none}
+@media(max-width:600px){
+ #line-buttons button[data-extended="true"]{grid-column:span 3}
+ #line-buttons button[data-extended="true"] b{font-size:11px;width:auto;background:transparent;color:var(--tab-color);font-weight:700}
+ .position-notice{margin:0 15px 12px;font-size:10px}
+}

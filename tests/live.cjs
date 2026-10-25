@@ -26,5 +26,9 @@ setImmediate(async()=>{
   assert.match(el('.map-description span').innerHTML,/자동갱신 15초 후/);
   vm.runInContext('paused=true;updateStatus()',context);
   assert.match(el('.map-description span').innerHTML,/갱신 일시정지/);
+  context.paused=false;context.currentLine={number:93,name:'서해선',positions:false,stations:[]};
+  context.requestLive=async(action)=>{assert.equal(action,'arrivals','arrival-only line skips position requests');return {ok:true,line:'서해선',updatedAt:Date.now(),items:[]}};
+  await context.pollLive();
+  assert.match(el('.map-description span').innerHTML,/도착정보 갱신/);
   console.log('PASS: live data, hidden stop, destination direction across loop, yellow recommendation, countdown and pause');
 });
