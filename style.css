@@ -67,3 +67,5 @@
 
 #station-panel{scroll-margin-top:16px}
 @media(prefers-reduced-motion:reduce){html,#map-scroll{scroll-behavior:auto}}
+
+.data-credit{margin-top:20px;padding:17px 0 0;border-top:1px solid #dfe7e1;color:#7f9084;font-size:10px;line-height:1.9}.data-credit strong{font-size:11px;color:#607767}.data-credit p{margin:5px 0}.data-credit a{color:#25794f;text-decoration:underline;text-underline-offset:3px}.data-credit a:focus-visible{outline:2px solid #16834f;outline-offset:3px}

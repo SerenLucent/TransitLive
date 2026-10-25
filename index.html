@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Transit Live · 2호선</title>
-<link rel="stylesheet" href="style.css?v=20261025-scroll1">
+<link rel="stylesheet" href="style.css?v=20261025-credit1">
 </head>
 <body>
 <header><a class="brand" href="./"><span class="brand-icon">↗</span> Transit<span>Live</span></a><span class="header-note">수도권의 흐름을 한눈에</span><span class="demo"><i></i> 실시간 연결 중</span></header>
@@ -13,6 +13,7 @@
 <div class="workspace"><section class="map-panel"><div class="map-heading"><div><span class="line-badge">2</span><strong>2호선 순환선</strong><span class="muted">본선 · 43개 역</span></div><button id="pause" class="quiet">Ⅱ 실시간 갱신 멈추기</button></div><div class="map-description"><span><i class="green-dot"></i> 실제 열차 위치 연결 중</span><span>역을 눌러 도착정보를 확인하세요</span></div><div id="map-scroll"><div id="map"><svg id="tracks" aria-hidden="true"></svg><div id="stations"></div><div id="trains"></div></div></div><div class="legend"><span><i class="legend-line"></i> 2호선</span><span><i class="legend-station"></i> 정차역</span><span>▣ 실시간 열차</span><span class="loop-note">↻ 마지막 역에서 첫 역으로 이어지는 순환 노선</span></div></section>
 <aside id="station-panel"><p class="detail-eyebrow">역 도착 안내 <span id="selected-station-number" class="station-number">2호선 · 222</span></p><div class="station-heading-row"><h2 id="selected-station-title" class="detail-title">강남 역</h2><div class="destination-search"><label class="visually-hidden" for="destination">어디로 가시나요?</label><div class="destination-field"><input id="destination" list="destination-stations" placeholder="어디로 가시나요?" autocomplete="off"><button id="clear-destination" aria-label="목적지 지우기" type="button">×</button></div><datalist id="destination-stations"></datalist></div></div><p id="route-summary" aria-live="polite"></p><div id="detail" aria-live="polite"></div></aside></div>
 <section class="notice"><span>ⓘ</span><div><strong>서울시 실시간 운행정보를 사용해요</strong><p>출처: 서울 열린데이터광장 · 역 진입·도착·출발 상태를 시각화합니다. 갱신 사이의 이동은 보간 표현이며 GPS 위치가 아닙니다. 데이터가 지연되면 이전 수신 정보로 표시됩니다.</p></div><span class="notice-tag">서울시 데이터</span></section>
+<section class="data-credit" aria-label="데이터 출처"><strong>데이터 출처 · 서울특별시</strong><p>서울 열린데이터광장의 <a href="https://data.seoul.go.kr/dataList/OA-12601/A/1/datasetView.do" target="_blank" rel="noopener noreferrer">서울시 지하철 실시간 열차 위치정보</a> 및 <a href="https://data.seoul.go.kr/dataList/OA-12764/A/1/datasetView.do" target="_blank" rel="noopener noreferrer">서울시 지하철 실시간 도착정보</a>를 이용합니다.</p><p>이용조건: 공공누리 제1유형(출처표시). 원본 데이터를 노선도·도착안내 형태로 가공하여 제공합니다.</p></section>
 <footer><span>TRANSIT LIVE <span class="footer-dot">·</span> 매일의 이동을 조금 더 가볍게.</span><span>2호선 본선 미리보기 · 지선 제외</span></footer>
-</main><script src="app.js?v=20261025-scroll1"></script><script src="live.js?v=20261025-scroll1"></script>
+</main><script src="app.js?v=20261025-credit1"></script><script src="live.js?v=20261025-credit1"></script>
 </body></html>
