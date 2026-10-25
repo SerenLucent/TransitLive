@@ -115,6 +115,13 @@
 .short-turn-dot,.train.short-turn:after{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e8a332}
 .short-turn-dot{margin:0 3px;vertical-align:middle}
 .train.short-turn:after{content:'';position:absolute;right:1px;top:3px;box-shadow:0 0 0 1px white}
+#station-panel{overflow:visible}
+.destination-search{position:relative}
+.destination-field{background:#fff}
+.destination-results{top:calc(100% + 7px);left:auto;right:0;width:250px;max-width:calc(100vw - 54px);max-height:260px;z-index:25}
+.destination-results button strong{display:block;font-size:12px;font-weight:600}
+.destination-results button small{display:block;margin-top:4px;color:#8a9a8e;font-size:10px;line-height:1.6}
+.destination-results button:focus-visible{outline:2px solid #16834f;outline-offset:-3px;background:#edf7f0}
 .map-heading{gap:12px;flex-wrap:wrap}
 .map-heading .in-line-search{width:auto;flex:1;min-width:140px;max-width:290px;height:39px;padding:0 9px}
 .map-heading .in-line-search input{font-size:11px;min-width:0}

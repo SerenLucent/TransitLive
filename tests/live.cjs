@@ -11,6 +11,15 @@ setImmediate(async()=>{
   assert.equal(context.trains.children.length,1,'branch station excluded');
   assert.match(el('#detail').innerHTML,/2226/);
   assert.match(el('#detail').innerHTML,/4분 후/);
+  el('#destination').value='';context.renderDestinationResults();
+  assert.equal(el('#destination-results').hidden,true,'empty destination keeps suggestions closed');
+  el('#destination').value='강';context.renderDestinationResults();
+  assert.equal(el('#destination-results').hidden,false,'one character opens matching suggestions');
+  assert.equal(el('#destination-results').children.length,1);
+  context.chooseDestination(21);
+  assert.equal(el('#destination-results').hidden,true,'choosing an option closes list');
+  assert.equal(el('#destination').value,'강남역');
+  el('#destination').value='';context.renderDestinationResults();
   assert.equal(vm.runInContext('live.models[0].sign',context),1,'inner direction follows station order');
   await context.loadArrivals();assert.equal(calls,2,'fresh arrivals reused');
   document.hidden=true;await context.pollLive();assert.equal(calls,2,'hidden page makes no requests');

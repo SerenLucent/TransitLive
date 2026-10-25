@@ -142,9 +142,27 @@ async function pollLive(){
 document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'▷ 실시간 갱신 재개':'Ⅱ 실시간 갱신 멈추기';clearTimeout(live.timer);live.nextRefreshAt=0;if(!paused)pollLive();renderDetail()};
 document.addEventListener('visibilitychange',()=>{clearTimeout(live.timer);clearTimeout(live.selectTimer);live.nextRefreshAt=0;if(!document.hidden&&!paused)pollLive();updateStatus()});
 const destinationInput=document.querySelector('#destination');
-function updateDestinationOptions(){document.querySelector('#destination-stations').innerHTML=names.map(n=>`<option value="${n}역"></option>`).join('')}
+const destinationResults=document.querySelector('#destination-results');
+function closeDestinationResults(){destinationResults.hidden=true;destinationInput.setAttribute('aria-expanded','false')}
+function updateDestinationOptions(){closeDestinationResults();destinationResults.replaceChildren()}
+function chooseDestination(index){live.destination=index;destinationInput.value=names[index]==='서울'?'서울역':names[index]+'역';closeDestinationResults();renderDetail()}
+function renderDestinationResults(){
+  const query=destinationInput.value.trim().replace(/역$/,'');
+  const index=names.indexOf(query);live.destination=index<0?null:index;
+  destinationResults.replaceChildren();
+  if(!query){closeDestinationResults();renderDetail();return}
+  const matches=names.map((name,index)=>({name,index})).filter(s=>s.name.includes(query)).slice(0,12);
+  destinationResults.hidden=false;destinationInput.setAttribute('aria-expanded','true');
+  if(!matches.length){const empty=document.createElement('p');empty.className='empty';empty.textContent='현재 구간에서 찾을 수 없는 역이에요.';destinationResults.append(empty)}
+  matches.forEach(({name,index})=>{const button=document.createElement('button');button.type='button';const title=document.createElement('strong');title.textContent=name==='서울'?'서울역':name+'역';const caption=document.createElement('small');caption.textContent=currentLine.name+' · '+currentRoute.name;button.append(title);button.append(caption);button.onclick=()=>chooseDestination(index);destinationResults.append(button)});
+  renderDetail();
+}
 updateDestinationOptions();
-destinationInput.addEventListener('input',()=>{const value=destinationInput.value.trim().replace(/역$/,'');const index=names.indexOf(value);live.destination=index<0?null:index;renderDetail()});
-document.querySelector('#clear-destination').onclick=()=>{destinationInput.value='';live.destination=null;renderDetail();destinationInput.focus()};
+destinationInput.addEventListener('input',renderDestinationResults);
+destinationInput.addEventListener('focus',()=>{if(destinationInput.value.trim())renderDestinationResults();else closeDestinationResults()});
+destinationInput.addEventListener('keydown',e=>{if(e.key==='Escape')closeDestinationResults();if(e.key==='Enter'){const b=destinationResults.hidden?null:destinationResults.querySelector('button');if(b){e.preventDefault();b.click()}}if(e.key==='ArrowDown'){const b=destinationResults.hidden?null:destinationResults.querySelector('button');if(b){e.preventDefault();b.focus()}}});
+destinationResults.addEventListener('keydown',e=>{const buttons=[...destinationResults.querySelectorAll('button')],index=buttons.indexOf(document.activeElement);if(e.key==='Escape'){destinationInput.focus();closeDestinationResults()}if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();buttons[(index+(e.key==='ArrowDown'?1:buttons.length-1))%buttons.length]?.focus()}});
+document.addEventListener('click',e=>{if(!e.target.closest('.destination-search'))closeDestinationResults()});
+document.querySelector('#clear-destination').onclick=()=>{destinationInput.value='';live.destination=null;closeDestinationResults();renderDetail();destinationInput.focus()};
 window.changeLiveLine=()=>{live.revision++;clearTimeout(live.timer);clearTimeout(live.selectTimer);live.busy=false;live.positions=null;live.models=[];live.error='';live.arrivalError='';live.destination=null;live.nextRefreshAt=0;destinationInput.value='';updateDestinationOptions();trains.replaceChildren();renderDetail();pollLive()};
 trains.replaceChildren();renderDetail();pollLive();
