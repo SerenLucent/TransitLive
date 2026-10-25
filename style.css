@@ -3,3 +3,5 @@
 
 /* Original generated transparent train sprite. */
 .train{width:52px;height:30px}.train img{display:block;width:100%;height:100%;object-fit:contain;user-select:none}.eyebrow{letter-spacing:1px}.time strong{font-variant-numeric:tabular-nums;font-size:25px}
+
+.arrival-top strong.live-message{font-size:14px;max-width:150px;text-align:right;overflow-wrap:anywhere}.arrival p{overflow-wrap:anywhere}
