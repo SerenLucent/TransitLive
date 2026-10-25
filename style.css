@@ -107,6 +107,14 @@
 #network-results button small{display:block;font-size:10px;color:#8a9a8e;margin-top:4px;line-height:1.6}
 #network-results button:focus-visible{outline:2px solid #16834f;outline-offset:-3px;background:#edf7f0}
 #line-buttons button.line-match{border-color:#efc62f;color:#735b0d;box-shadow:0 0 0 2px #ffe36885,0 0 14px #f6d53f75;background:#fffdf0}
+.arrival.train-recommended{border:2px solid #eac134;background:#fffdf1;box-shadow:0 0 8px #f5d55435}
+.short-turn-tag{display:inline-block;padding:2px 5px;border-radius:4px;background:#fff0d2;color:#9a620d;font-size:9px;font-weight:600}
+.arrival .terminus-label{color:#607769}
+.arrival .coverage-label{font-weight:600;color:#816815;line-height:1.6}
+.arrival .coverage-label.does-not-reach{color:#a66a2b}
+.short-turn-dot,.train.short-turn:after{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e8a332}
+.short-turn-dot{margin:0 3px;vertical-align:middle}
+.train.short-turn:after{content:'';position:absolute;right:1px;top:3px;box-shadow:0 0 0 1px white}
 .map-heading{gap:12px;flex-wrap:wrap}
 .map-heading .in-line-search{width:auto;flex:1;min-width:140px;max-width:290px;height:39px;padding:0 9px}
 .map-heading .in-line-search input{font-size:11px;min-width:0}

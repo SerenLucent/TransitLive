@@ -26,6 +26,18 @@ setImmediate(async()=>{
   assert.match(el('.map-description span').innerHTML,/자동갱신 15초 후/);
   vm.runInContext('paused=true;updateStatus()',context);
   assert.match(el('.map-description span').innerHTML,/갱신 일시정지/);
+  context.names=['문산','운정','능곡','가좌','신촌','서울'];context.selected=0;context.currentRoute={loop:false};
+  vm.runInContext('live.destination=5',context);
+  assert.equal(context.trainJourney({bstatnNm:'능곡'},'하행').shortTurn,true);
+  assert.equal(context.trainJourney({bstatnNm:'능곡'},'하행').reaches,false,'short turn cannot reach Seoul');
+  assert.equal(context.trainJourney({bstatnNm:'서울'},'하행').reaches,true);
+  assert.equal(context.trainJourney({bstatnNm:null},'하행').reaches,null,'unknown destination never recommended');
+  context.names=['왕십리','강동','하남'];context.currentLine={routes:[{names:['왕십리','강동','하남']},{names:['강동','둔촌동','마천']}]};
+  vm.runInContext('live.destination=2',context);
+  assert.equal(context.trainJourney({bstatnNm:'마천'},'하행').reaches,false,'wrong branch cannot reach Hanam');
+  vm.runInContext('live.destination=1',context);
+  assert.equal(context.trainJourney({bstatnNm:'마천'},'하행').reaches,true,'branch train reaches shared station');
+  vm.runInContext('live.destination=null',context);
   context.paused=false;context.currentLine={number:93,name:'서해선',positions:false,stations:[]};
   context.requestLive=async(action)=>{assert.equal(action,'arrivals','arrival-only line skips position requests');return {ok:true,line:'서해선',updatedAt:Date.now(),items:[]}};
   await context.pollLive();
