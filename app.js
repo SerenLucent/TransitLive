@@ -2,7 +2,7 @@ const names='시청,을지로입구,을지로3가,을지로4가,동대문역사�
 const map=document.querySelector('#map'),stations=document.querySelector('#stations'),trains=document.querySelector('#trains');
 let selected=21,paused=false,elapsed=0,last=performance.now(),points=[],segments=[];
 const offsets=[0,7.4,14.6,22,30.5,37.2];
-const trainIcon='<img src="assets/train-line2-mini.png" alt="" draggable="false">';
+const trainIcon='<img src="assets/train-line2-short.png" alt="" draggable="false">';
 offsets.forEach((_,i)=>{const el=document.createElement('div');el.className='train';el.innerHTML=trainIcon;el.setAttribute('aria-hidden','true');trains.append(el)});
 names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i);stations.append(button)});
 function layout(){

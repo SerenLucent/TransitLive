@@ -1,0 +1,5 @@
+Mode: built-in image_gen edit
+Source: train-line2-mini.png
+Output: train-line2-short.png
+
+Edit this exact miniature subway car to SHORTEN THE BODY, not change its illustration style. Train points RIGHT, rear is LEFT. Keep the RIGHT cab nose/headlight, small right passenger window, right pair of sliding doors, and the large central long window. Immediately to the LEFT of that central long window, finish the train with a neatly rounded vertical REAR end cap. REMOVE the entire original left sliding-door pair and leftmost small window and associated rear body. Reposition the rear railway bogie beneath the new rear end so it still has two compact steel-wheel railway bogies. Finished car is about 60% of original length with original height; a compact mini subway. Preserve silver-white finish, emerald green stripe, teal opaque windows, roof equipment simplified to fit, original polished miniature illustration style. No bus tires, no extreme cartoon redesign. Single right-facing side-view subway car tightly framed, minimal empty margins, fully transparent background. No text, no rails, no scenery.
