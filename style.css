@@ -64,3 +64,6 @@
  .map-heading{gap:8px}.map-heading strong{font-size:13px}.quiet{font-size:9px}
  .map-description{padding:0 15px}.refresh-countdown{margin-left:0}
 }
+
+#station-panel{scroll-margin-top:16px}
+@media(prefers-reduced-motion:reduce){html,#map-scroll{scroll-behavior:auto}}

@@ -4,7 +4,7 @@ let selected=21,paused=false,elapsed=0,last=performance.now(),points=[],segments
 const offsets=[0,7.4,14.6,22,30.5,37.2];
 const trainIcon='<img src="assets/train-line2-short.png" alt="" draggable="false">';
 offsets.forEach((_,i)=>{const el=document.createElement('div');el.className='train';el.innerHTML=trainIcon;el.setAttribute('aria-hidden','true');trains.append(el)});
-names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i);stations.append(button)});
+names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i,true);stations.append(button)});
 function layout(){
   const w=map.clientWidth,compact=w<600,left=compact?46:80,right=w-(compact?30:50),top=compact?45:65;
   const capacity=Math.max(3,Math.min(11,Math.floor((right-left)/(compact?48:62))+1));
@@ -28,7 +28,7 @@ function layout(){
   document.querySelector('#tracks').innerHTML='<path d="'+route+'" fill="none" stroke="#e3f3e9" stroke-width="15"/><path d="'+route+'" fill="none" stroke="#19a66a" stroke-width="5" stroke-linejoin="round"/>';
   [...stations.children].forEach((el,i)=>{el.style.left=points[i].x+'px';el.style.top=(points[i].y+13)+'px'});
 }
-function select(i,scroll=false){selected=i;[...stations.children].forEach((el,n)=>{el.classList.toggle('selected',n===i);el.setAttribute('aria-pressed',n===i?'true':'false')});renderDetail();if(window.selectLive)window.selectLive();if(scroll)stations.children[i].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}
+function select(i,scroll=false){selected=i;[...stations.children].forEach((el,n)=>{el.classList.toggle('selected',n===i);el.setAttribute('aria-pressed',n===i?'true':'false')});renderDetail();if(window.selectLive)window.selectLive();if(scroll)document.querySelector('#station-panel').scrollIntoView({behavior:'smooth',block:'start'})}
 function renderDetail(){if(window.renderLive)window.renderLive()}
 function positionAt(p){
   const {a,b,c,d}=segments[Math.floor(p)%43],t=p%1,u=1-t;
@@ -37,7 +37,7 @@ function positionAt(p){
 }
 function frame(now){if(!document.hidden&&!paused&&window.paintLive)window.paintLive(now);requestAnimationFrame(frame)}
 document.querySelector('#pause').onclick=()=>{paused=!paused;document.querySelector('#pause').textContent=paused?'▷ 움직임 재개':'Ⅱ 움직임 멈추기';renderDetail()};
-const search=document.querySelector('#search'),results=document.querySelector('#results');search.addEventListener('input',()=>{const q=search.value.trim().replace(/역$/,'');results.hidden=!q;if(!q)return;const matches=names.map((n,i)=>({n,i})).filter(x=>x.n.includes(q));results.replaceChildren();if(!matches.length){const e=document.createElement('div');e.className='empty';e.textContent='2호선 본선에서 역을 찾을 수 없어요.';results.append(e)}matches.forEach(({n,i})=>{const b=document.createElement('button');b.textContent='② '+n;b.onclick=()=>{select(i,true);results.hidden=true;search.value=n;search.focus()};results.append(b)})});search.addEventListener('keydown',e=>{if(e.key==='Escape')results.hidden=true;if(e.key==='Enter'){const b=results.querySelector('button');if(b)b.click()}});document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))results.hidden=true});document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();search.focus()}});document.addEventListener('visibilitychange',()=>{last=performance.now()});
+const search=document.querySelector('#search'),results=document.querySelector('#results');search.addEventListener('input',()=>{const q=search.value.trim().replace(/역$/,'');results.hidden=!q;if(!q)return;const matches=names.map((n,i)=>({n,i})).filter(x=>x.n.includes(q));results.replaceChildren();if(!matches.length){const e=document.createElement('div');e.className='empty';e.textContent='2호선 본선에서 역을 찾을 수 없어요.';results.append(e)}matches.forEach(({n,i})=>{const b=document.createElement('button');b.textContent='② '+n;b.onclick=()=>{select(i,true);results.hidden=true;search.value=n;search.blur()};results.append(b)})});search.addEventListener('keydown',e=>{if(e.key==='Escape')results.hidden=true;if(e.key==='Enter'){const b=results.querySelector('button');if(b)b.click()}});document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))results.hidden=true});document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();search.focus()}});document.addEventListener('visibilitychange',()=>{last=performance.now()});
 function clock(){document.querySelector('#clock').textContent=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date())}layout();select(21);clock();setInterval(()=>{clock();if(!paused&&!document.hidden)renderDetail()},1000);window.addEventListener('resize',layout);requestAnimationFrame(frame);
 
 
