@@ -58,6 +58,8 @@ function destinationRoute(origin, destination){
 window.renderLive=()=>{
   const name=names[selected],data=live.arrivals.get(name),old=dataOld(data);
   const route=destinationRoute(selected,live.destination);
+  document.querySelector('#selected-station-title').textContent=name+' 역';
+  document.querySelector('#selected-station-number').textContent='2호선 · '+(201+selected);
   const input=document.querySelector('#destination');
   const typed=input?input.value.trim():'';
   document.querySelector('#route-summary').textContent=route?`${name} → ${names[live.destination]} · ${route.direction}순환 ${route.stops}개 역 이동`:live.destination===selected?'현재 선택한 역과 목적지가 같아요.':typed?'자동완성에서 2호선 본선 역을 선택해주세요.':'목적지를 고르면 더 적은 역을 지나는 방향을 표시해요.';
@@ -66,7 +68,7 @@ window.renderLive=()=>{
     const recommended=route&&(route.direction===direction||route.direction==='양방향');
     return `<section class="direction-group${recommended?' recommended':''}" aria-label="${direction}순환${recommended?' · 목적지 추천 방향':''}"><div class="direction"><span>${direction}순환</span><span>${recommended?'목적지 방향':old?'이전 정보':'도착 안내'}</span></div>`+(rows.length?rows.map((r,i)=>`<div class="arrival ${i?'secondary':''}"><div class="arrival-top"><b>${i?'다다음':'다음'} 열차</b><strong class="live-message">${esc(r.arvlMsg2||'시간 미제공')}</strong></div><p>열차 ${esc(r.btrainNo||'번호 미제공')} · ${esc(r.bstatnNm||'행선지 미제공')}행</p><p>${esc(r.arvlMsg3||r.trainLineNm||'')}</p></div>`).join(''):`<p class="detail-caption">${esc(live.arrivalError||(data?'현재 제공되는 도착정보가 없어요.':'도착정보를 불러오는 중…'))}</p>`)+`</section>`;
   }).join('');
-  document.querySelector('#detail').innerHTML=`<p class="detail-eyebrow">역 도착 안내</p><span class="station-number">2호선 · ${201+selected}</span><h2 class="detail-title">${name} 역</h2><p class="english">순환선 본선</p><div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${route?'<br>추천은 본선 역 수 기준 · 열차별 종착역도 확인해주세요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 30초 간격 확인</div>`;
+  document.querySelector('#detail').innerHTML=`<div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${route?'<br>추천은 본선 역 수 기준 · 열차별 종착역도 확인해주세요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 30초 간격 확인</div>`;
   updateStatus();
 };
 async function loadArrivals(){
