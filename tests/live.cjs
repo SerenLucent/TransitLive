@@ -1,0 +1,30 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const elements=new Map();
+function element(){return {style:{},value:'',children:[],textContent:'',innerHTML:'',addEventListener(){},classList:{toggle(){}},setAttribute(){},append(e){this.children.push(e)},replaceChildren(){this.children=[]},remove(){},firstElementChild:{style:{}}}}
+const el=k=>{if(!elements.has(k))elements.set(k,element());return elements.get(k)};
+let calls=0;
+const document={hidden:false,querySelector:el,addEventListener(){},createElement:element,head:{append(script){calls++;const u=new URL(script.src),station=u.searchParams.get('station');const data={ok:true,updatedAt:Date.now(),stale:false,items:station?[{updnLine:'내선',ordkey:'11001',btrainNo:'2226',bstatnNm:'성수',arvlMsg2:'4분 후',arvlMsg3:'삼성'}]:[{statnNm:'강남',trainNo:'2226',updnLine:'0',trainSttus:'1'},{statnNm:'신설동',trainNo:'1595',updnLine:'1',trainSttus:'1'}]};queueMicrotask(()=>context.window[u.searchParams.get('callback')](data))}}};
+const context={document,window:{},URL,Date,Math,Map,Promise,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout(){},names:['시청',...Array(20).fill('기타'),'강남',...Array(21).fill('기타')],selected:21,paused:false,trainIcon:'<img>',trains:element(),positionAt:p=>({x:p,y:100}),renderDetail(){if(context.window.renderLive)context.window.renderLive()}};
+vm.createContext(context);vm.runInContext(fs.readFileSync('live.js','utf8'),context);
+setImmediate(async()=>{
+  assert.equal(calls,2);
+  assert.equal(context.trains.children.length,1,'branch station excluded');
+  assert.match(el('#detail').innerHTML,/2226/);
+  assert.match(el('#detail').innerHTML,/4분 후/);
+  assert.equal(vm.runInContext('live.models[0].sign',context),1,'inner direction follows station order');
+  await context.loadArrivals();assert.equal(calls,2,'fresh arrivals reused');
+  document.hidden=true;await context.pollLive();assert.equal(calls,2,'hidden page makes no requests');
+  assert.equal(vm.runInContext("esc('<script>')",context),'&lt;script&gt;');
+  assert.equal(context.destinationRoute(42,0).direction,'내선','closing loop routing');
+  assert.equal(context.destinationRoute(0,42).direction,'외선');
+  assert.equal(context.destinationRoute(21,21),null,'same station has no direction');
+  vm.runInContext('live.destination=22; window.renderLive()',context);
+  assert.match(el('#detail').innerHTML,/direction-group recommended/);
+  assert.match(el('#route-summary').textContent,/내선순환 1개 역/);
+  document.hidden=false;
+  vm.runInContext('live.nextRefreshAt=Date.now()+15000;updateStatus()',context);
+  assert.match(el('.map-description span').innerHTML,/자동갱신 15초 후/);
+  vm.runInContext('paused=true;updateStatus()',context);
+  assert.match(el('.map-description span').innerHTML,/갱신 일시정지/);
+  console.log('PASS: live data, hidden stop, destination direction across loop, yellow recommendation, countdown and pause');
+});
