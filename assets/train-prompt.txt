@@ -1,0 +1,4 @@
+Generation mode: built-in image_gen tool
+Final asset: train-line2.png
+
+Use case: stylized-concept. Asset type: transparent sprite for a Korean metropolitan subway live map. Create one beautiful miniature subway train car pointing RIGHT, strict side view, horizontal, centered tightly with small transparent margins. White and silver rounded body, emerald green stripe, charcoal teal windows, two subtle wheels, friendly refined miniature product illustration with clean detailed edges and gentle dimensional shading. Easily legible at 48 pixels wide. Single car only, no rails, no ground, no scene, no text, no logos, no watermark. Fully transparent background.

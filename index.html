@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transit Live · 2호선</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="./"><span class="brand-icon">↗</span> Transit<span>Live</span></a><span class="header-note">수도권의 흐름을 한눈에</span><span class="demo"><i></i> 샘플 모드</span></header>
+<main>
+<section class="intro"><div><p class="eyebrow">수도권 지하철 / 라이브 맵</p><h1>지금, 열차는 어디쯤?</h1><p class="subtitle">노선을 따라 움직이는 열차와 우리 역의 도착 소식을 만나보세요.</p></div><div class="time"><span>서울 · 한국 표준시</span><strong id="clock"></strong></div></section>
+<section class="toolbar"><div class="line-tabs"><button class="active" aria-pressed="true"><b>2</b> 2호선 <span>순환선</span></button><span class="coming">다른 호선은 준비 중이에요</span></div><div class="search-wrap"><label for="search">⌕</label><input id="search" placeholder="어느 역을 찾으세요?" autocomplete="off"><kbd>/</kbd><div id="results" class="results" hidden></div></div></section>
+<div class="workspace"><section class="map-panel"><div class="map-heading"><div><span class="line-badge">2</span><strong>2호선 순환선</strong><span class="muted">본선 · 43개 역</span></div><button id="pause" class="quiet">Ⅱ 움직임 멈추기</button></div><div class="map-description"><span><i class="green-dot"></i> 샘플 열차 운행 중</span><span>역을 눌러 도착정보를 확인하세요</span></div><div id="map-scroll"><div id="map"><svg id="tracks" aria-hidden="true"></svg><div id="stations"></div><div id="trains"></div></div></div><div class="legend"><span><i class="legend-line"></i> 2호선</span><span><i class="legend-station"></i> 정차역</span><span>▣ 샘플 열차</span><span class="loop-note">↻ 마지막 역에서 첫 역으로 이어지는 순환 노선</span></div></section>
+<aside id="detail" aria-live="polite"></aside></div>
+<section class="notice"><span>ⓘ</span><div><strong>지금은 샘플 운행을 보고 있어요</strong><p>열차 위치와 도착 시간은 화면 체험을 위한 가상 데이터입니다. 실제 운행정보가 아니며, API 연결 후 실시간 정보로 전환됩니다.</p></div><span class="notice-tag">샘플 데이터</span></section>
+<footer><span>TRANSIT LIVE <span class="footer-dot">·</span> 매일의 이동을 조금 더 가볍게.</span><span>2호선 본선 미리보기 · 지선 제외</span></footer>
+</main><script src="app.js"></script>
+</body></html>

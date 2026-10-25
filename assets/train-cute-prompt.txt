@@ -1,0 +1,4 @@
+Generation mode: built-in image_gen
+Asset: train-line2-cute.png
+
+Use case: stylized-concept. Asset type: tiny cute subway sprite for a Korean subway live map. Draw ONE adorable short chubby subway car, strict side profile facing RIGHT, on fully transparent background. Hand-drawn children's sticker illustration style with soft rounded shapes, slightly playful proportions, clean thick dark green outline, flat soft white body, one fresh green stripe, only THREE large rounded mint-blue windows, two simple tiny dark wheels, gently rounded cab nose on right. Very simple charming cartoon, readable at 52px wide. Train fills canvas tightly with minimal transparent margins. No realism, no metallic textures, no fine mechanical details, no roof equipment, no rails, no scenery, no lettering, no logo, no watermark, no face. One train only.
