@@ -10,7 +10,7 @@ function rebuildStations(){
   names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i,true);stations.append(button)});
 }
 function changeLine(number,routeIndex=0){
-  currentLine=LINES[number];currentRoute=currentLine.routes[routeIndex];names=currentRoute.names.slice();selected=0;
+  currentLine=LINES[number];document.title='Transit Live · '+currentLine.name;currentRoute=currentLine.routes[routeIndex];names=currentRoute.names.slice();selected=0;
   document.documentElement.style.setProperty('--green',currentLine.color);
   document.querySelectorAll('[data-line]').forEach(b=>{b.classList.toggle('active',Number(b.dataset.line)===number);b.setAttribute('aria-pressed',Number(b.dataset.line)===number?'true':'false')});
   document.querySelector('#route-picker').replaceChildren();currentLine.routes.forEach((r,i)=>{const option=document.createElement('option');option.value=i;option.textContent=r.name;document.querySelector('#route-picker').append(option)});document.querySelector('#route-picker').value=routeIndex;
@@ -23,7 +23,7 @@ function changeLine(number,routeIndex=0){
   rebuildStations();layout();select(0);
   if(window.changeLiveLine)window.changeLiveLine();
 }
-Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.number+'</b><span>'+line.name+'</span>';b.onclick=()=>changeLine(line.number);document.querySelector('#line-buttons').append(b)});
+Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.number+'</b><span>'+line.name+'</span>';b.onclick=()=>changeLine(line.number);document.querySelector('#line-buttons').append(b)});
 document.querySelector('#route-picker').onchange=e=>changeLine(currentLine.number,Number(e.target.value));
 function layout(){
   const w=map.clientWidth,compact=w<600,left=compact?46:80,right=w-(compact?30:50),top=compact?45:65;

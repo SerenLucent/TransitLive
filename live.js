@@ -26,7 +26,7 @@ function installPositions(data){
     const canonical=currentLine.stations.find(s=>s.id&&s.id===r.statnId);
     const i=names.indexOf(canonical?canonical.name:normalizeStation(r.statnNm));if(i<0)return [];
     // Along the listed station order, inner-circle trains advance; outer reverse.
-    const sign=String(r.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1,status=String(r.trainSttus);
+    const sign=currentRoute.oneWay?1:String(r.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1,status=String(r.trainSttus);
     const target=wrap(i+(status==='0'?-sign*.15:status==='2'?sign*.15:status==='3'?-sign*.65:0));
     const id=String(r.trainNo)+':'+r.updnLine,previous=old.get(id);
     const from=previous?modelPosition(previous,now):target;
