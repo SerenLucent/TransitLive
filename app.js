@@ -6,14 +6,22 @@ const trainIcon='<img src="assets/train-line2-short.png" alt="" draggable="false
 offsets.forEach((_,i)=>{const el=document.createElement('div');el.className='train';el.innerHTML=trainIcon;el.setAttribute('aria-hidden','true');trains.append(el)});
 names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i);stations.append(button)});
 function layout(){
-  const w=map.clientWidth,h=map.clientHeight,left=90,right=w-60,top=65,step=(h-140)/3;
-  const counts=[11,11,11,10];
+  const w=map.clientWidth,compact=w<600,left=compact?46:80,right=w-(compact?30:50),top=compact?45:65;
+  const capacity=Math.max(3,Math.min(11,Math.floor((right-left)/(compact?48:62))+1));
+  // An even number of rows puts both loop endpoints on the left edge.
+  let rows=Math.max(4,Math.ceil(names.length/capacity));
+  if(rows%2)rows++;
+  const base=Math.floor(names.length/rows),extra=names.length%rows;
+  const counts=Array.from({length:rows},(_,row)=>base+(row<extra?1:0));
+  const h=compact?top+(rows-1)*88+60:Math.max(510,top+(rows-1)*100+65),step=(h-top-(compact?60:65))/(rows-1);
+  map.style.height=h+'px';
+  map.style.setProperty('--station-width',Math.min(80,(right-left)/(Math.max(...counts)-1)-3)+'px');
   points=[];
   counts.forEach((count,row)=>{for(let col=0;col<count;col++)points.push({x:row%2?right-col*(right-left)/(count-1):left+col*(right-left)/(count-1),y:top+row*step})});
   segments=points.map((a,i)=>{
     const b=points[(i+1)%points.length];
     if(i===points.length-1)return {a,b,c:{x:0,y:a.y},d:{x:0,y:b.y}};
-    if(a.y!==b.y){const bend=a.x===right?35:-35;return {a,b,c:{x:a.x+bend,y:a.y},d:{x:b.x+bend,y:b.y}}}
+    if(a.y!==b.y){const bend=a.x===right?(compact?18:28):-(compact?18:28);return {a,b,c:{x:a.x+bend,y:a.y},d:{x:b.x+bend,y:b.y}}}
     return {a,b};
   });
   const route='M '+points[0].x+' '+points[0].y+segments.map(({b,c,d})=>c?' C '+c.x+' '+c.y+','+d.x+' '+d.y+','+b.x+' '+b.y:' L '+b.x+' '+b.y).join('')+' Z';

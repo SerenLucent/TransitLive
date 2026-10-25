@@ -31,6 +31,17 @@
 .station-heading-row .destination-field button{padding:0 7px}
 #station-panel>#route-summary{min-height:0;margin:9px 0 0;line-height:1.6}
 #station-panel .direction-grid{margin-top:12px}
+#map{min-width:0}
+#map-scroll{overflow:visible}
+.workspace>*{min-width:0}
+.station{width:var(--station-width,70px)}
+.station>span:last-child{display:block;overflow-wrap:anywhere;line-height:1.45}
+@media(max-width:600px){
+ .station{font-size:9px;height:58px}
+ .station .node{width:12px;height:12px;margin-bottom:7px}
+ #map{background-size:16px 16px}
+ .train{width:34px;height:26px}
+}
 @media(max-width:1050px){
  .direction-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
  .destination-search{max-width:560px}
