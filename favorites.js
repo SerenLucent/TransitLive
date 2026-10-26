@@ -7,6 +7,16 @@ const favoriteOrigin=document.querySelector('#favorite-origin');
 const favoriteDestination=document.querySelector('#favorite-destination');
 const favoriteMessage=document.querySelector('#favorite-message');
 let favorites=[];
+let favoritesExpanded=false;
+const favoriteToggle=document.querySelector('#favorite-toggle');
+function updateFavoriteDisclosure(){
+  if(!favorites.length)favoritesExpanded=false;
+  favoriteToggle.hidden=!favorites.length;
+  favoriteToggle.textContent=(favoritesExpanded?'▲ 즐겨찾기 접기':'▼ 즐겨찾기 보기')+' ('+favorites.length+')';
+  favoriteToggle.setAttribute('aria-expanded',String(favoritesExpanded));
+  document.querySelector('#favorite-list').hidden=!favoritesExpanded;
+}
+favoriteToggle.onclick=()=>{favoritesExpanded=!favoritesExpanded;updateFavoriteDisclosure()};
 function validFavorite(f){
   const line=LINES[f?.line],route=line?.routes[f?.route];
   return !!route&&route.names.includes(f.origin)&&route.names.includes(f.destination)&&f.origin!==f.destination;
@@ -33,6 +43,7 @@ function openFavorite(f){
 function renderFavorites(){
   const list=document.querySelector('#favorite-list');list.replaceChildren();
   document.querySelector('#favorite-empty').hidden=favorites.length>0;
+  updateFavoriteDisclosure();
   favorites.forEach((f,index)=>{
     const line=LINES[f.line],item=document.createElement('div'),open=document.createElement('button'),remove=document.createElement('button');
     item.className='favorite-item';item.style.setProperty('--favorite-color',line.color);
