@@ -9,6 +9,13 @@ vm.createContext(context);vm.runInContext(fs.readFileSync('live.js','utf8'),cont
 setImmediate(async()=>{
   assert.equal(calls,2);
   assert.equal(context.trains.children.length,1,'branch station excluded');
+  assert.match(context.trains.children[0].className,/train-up/);
+  assert.match(context.trains.children[0].innerHTML,/train-direction-arrow/);
+  const arrivalRows=[{btrainNo:'later',ordkey:'11001',arvlCd:'99'},{btrainNo:'platform',ordkey:'12000',arvlCd:'1'},{btrainNo:'gone',ordkey:'10000',arvlCd:'2'},{btrainNo:'platform',ordkey:'12000',arvlCd:'1'}];
+  assert.equal(context.upcomingArrivals(arrivalRows).map(r=>r.btrainNo).join(','),'platform,later','arrived train stays first, departures and duplicate trains excluded');
+  arrivalRows[1].arvlCd='2';arrivalRows[3].arvlCd='2';
+  assert.equal(context.upcomingArrivals(arrivalRows)[0].btrainNo,'later','next train becomes current after departure');
+  assert.equal(context.upcomingArrivals([{btrainNo:'far',ordkey:'11005',arvlCd:'99'},{btrainNo:'near',ordkey:'12001',arvlCd:'3'}])[0].btrainNo,'near','nearest station distance precedes supplied sequence');
   assert.match(el('#detail').innerHTML,/2226/);
   assert.match(el('#detail').innerHTML,/4분 후/);
   el('#destination').value='';context.renderDestinationResults();

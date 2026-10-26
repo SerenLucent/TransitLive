@@ -35,7 +35,9 @@
 #map-scroll{overflow:visible}
 .workspace>*{min-width:0}
 .station{width:var(--station-width,70px)}
-.station>span:last-child{display:block;overflow-wrap:anywhere;line-height:1.45}
+.station>span:last-child{display:block;overflow-wrap:anywhere;line-height:1.45;transform:translateY(9px)}
+.train-up{--arrow-color:#e34d54}.train-down{--arrow-color:#397cdd}
+.train-direction-arrow{position:absolute;left:calc(100% + 1px);top:50%;transform:translateY(-50%);width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--arrow-color);filter:drop-shadow(0 0 1px white)}
 @media(max-width:600px){
  .station{font-size:9px;height:58px}
  .station .node{width:12px;height:12px;margin-bottom:7px}
