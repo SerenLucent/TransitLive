@@ -111,7 +111,11 @@
 #line-buttons button.line-match{border-color:#efc62f;color:#735b0d;box-shadow:0 0 0 2px #ffe36885,0 0 14px #f6d53f75;background:#fff4b8}
 .arrival.train-recommended{border:2px solid #eac134;background:#fffdf1;box-shadow:0 0 8px #f5d55435}
 .short-turn-tag{display:inline-block;padding:2px 5px;border-radius:4px;background:#fff0d2;color:#9a620d;font-size:9px;font-weight:600}
-.arrival .terminus-label{color:#607769}
+.arrival .terminus-label{color:#111}
+.arrival .destination-name{color:#111;font-weight:800}
+.detail-direction-triangle{display:inline-block;width:0;height:0;margin-right:5px;vertical-align:1px;border-left:4px solid transparent;border-right:4px solid transparent}
+.detail-direction-triangle.direction-up{border-bottom:7px solid #e34d54}
+.detail-direction-triangle.direction-down{border-top:7px solid #397cdd}
 .arrival .coverage-label{font-weight:600;color:#816815;line-height:1.6}
 .arrival .coverage-label.does-not-reach{color:#a66a2b}
 .short-turn-dot,.train.short-turn:after{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e8a332}
