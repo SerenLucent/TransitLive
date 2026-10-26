@@ -67,9 +67,14 @@ setImmediate(async()=>{
   assert.equal(corrected.arvlMsg2,'2개 역 전','newer nearby position corrects an older distant message for same train');
   context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-180000).toISOString().slice(0,19).replace('T',' ');
   assert(context.positionArrivalRows([],'상행').some(r=>r.btrainNo==='5106'),'three-minute observation still matches the visible map train');
+  context.positionFixture.items.push(pos('extra','홍대입구','문산'));
   vm.runInContext('live.destination=null;live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/이번 열차<\/b>[\s\S]*?5106/,'visible nearest stopping train is not treated as absent');
   assert.doesNotMatch(el('#detail').innerHTML,/5708/);
+  assert.match(el('#detail').innerHTML,/<details class="arrival-more"[^>]*><summary>나머지 열차 보기 \(1대\)/,'third train is retained inside collapsed list');
+  assert.match(el('#detail').innerHTML,/3번째 열차/,'all remaining trains still available');
+  vm.runInContext('live.expandedArrivals.add(arrivalKey()+":상행");window.renderLive()',context);
+  assert.match(el('#detail').innerHTML,/<details class="arrival-more"[^>]* open><summary>나머지 열차 접기/,'expanded state survives clock and API rerenders');
   context.positionFixture.items=[pos('platform','수색','수색','0'),pos('departed','수색','문산','0',{trainSttus:'2'})];
   const platform=context.positionArrivalRows([],'상행');assert.equal(platform.length,1);assert.equal(platform[0].arvlCd,'1','arrived terminal train remains until departure');
   vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
