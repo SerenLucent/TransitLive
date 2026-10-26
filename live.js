@@ -217,6 +217,13 @@ window.renderLive=()=>{
   document.querySelector('#detail').innerHTML=`<div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${hasPositionArrivals?'<br>위치정보 보완 열차는 역 수 기준이며, 급행 추월 등으로 실제 도착 순서와 다를 수 있어요.':''}${route?'<br>방향은 역 수 기준 · 열차별 종착역까지 확인해 안내합니다. 다른 구간 종착은 별도 확인이 필요해요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 30초 간격 확인</div>`;
   updateStatus();
 };
+document.querySelector('#detail').addEventListener('click',event=>{
+  const summary=event.target.closest('details.arrival-more > summary');
+  if(!summary)return;
+  const details=summary.parentElement;
+  // Record intent synchronously, before the next clock refresh can rebuild cards.
+  if(details.open)live.expandedArrivals.delete(details.dataset.key);else live.expandedArrivals.add(details.dataset.key);
+});
 document.querySelector('#detail').addEventListener('toggle',event=>{
   const details=event.target;
   if(!details.isConnected||!details.matches('details.arrival-more'))return;
