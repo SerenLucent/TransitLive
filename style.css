@@ -164,3 +164,5 @@
 }
 
 .favorite-fields .custom-select-field{font-size:11px;color:#718478}.favorite-fields .custom-select-field:nth-child(2) .custom-select-menu{left:auto;right:0}
+
+.favorite-memo-field{display:block;margin-top:12px;max-width:300px;font-size:11px;color:#718478}.favorite-memo-field input{display:block;box-sizing:border-box;width:100%;margin-top:6px;border:1px solid #dfe6df;border-radius:7px;padding:9px;background:white;color:var(--ink);font:inherit;font-size:12px}.favorite-memo-field input::placeholder{color:#96a19a}#favorite-memo-count{float:right;color:#83918b}.favorite-open{display:flex;align-items:center;gap:12px}.favorite-journey{flex:1;min-width:0}.favorite-memo{flex:0 1 44%;min-width:0;font-size:12px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.favorite-remove{flex:0 0 38px;align-self:stretch;padding:8px;display:grid;place-items:center}.favorite-item{align-items:stretch}

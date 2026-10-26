@@ -6,6 +6,9 @@ const favoriteRoute=document.querySelector('#favorite-route');
 const favoriteOrigin=document.querySelector('#favorite-origin');
 const favoriteDestination=document.querySelector('#favorite-destination');
 const favoriteMessage=document.querySelector('#favorite-message');
+const favoriteMemo=document.querySelector('#favorite-memo');
+const memoText=value=>Array.from(typeof value==='string'?value:'').slice(0,20).join('');
+favoriteMemo.oninput=()=>{document.querySelector('#favorite-memo-count').textContent=Array.from(favoriteMemo.value).length+'/20'};
 let favorites=[];
 let favoritesExpanded=false;
 const favoriteToggle=document.querySelector('#favorite-toggle');
@@ -51,7 +54,9 @@ function renderFavorites(){
     open.type='button';open.className='favorite-open';
     const title=document.createElement('strong'),caption=document.createElement('small');
     title.textContent=f.origin+' → '+f.destination;caption.textContent=line.name+' · '+line.routes[f.route].name;
-    open.append(title);open.append(caption);open.onclick=()=>openFavorite(f);
+    const journey=document.createElement('span');journey.className='favorite-journey';journey.append(title);journey.append(caption);open.append(journey);
+    if(f.memo){const memo=document.createElement('span');memo.className='favorite-memo';memo.textContent=memoText(f.memo);open.append(memo)}
+    open.onclick=()=>openFavorite(f);
     remove.type='button';remove.className='favorite-remove';remove.textContent='×';remove.setAttribute('aria-label',f.origin+' → '+f.destination+' 즐겨찾기 삭제');
     remove.onclick=()=>{if(storeFavorites(favorites.filter((_,i)=>i!==index)))favoriteMessage.textContent='즐겨찾기를 삭제했어요.'};
     item.append(open);item.append(remove);list.append(item);
@@ -67,7 +72,7 @@ document.querySelector('#favorite-current').onclick=()=>{
 };
 favoriteForm.onsubmit=e=>{
   e.preventDefault();
-  const f={line:Number(favoriteLine.value),route:Number(favoriteRoute.value),origin:favoriteOrigin.value,destination:favoriteDestination.value};
+  const f={line:Number(favoriteLine.value),route:Number(favoriteRoute.value),origin:favoriteOrigin.value,destination:favoriteDestination.value,memo:memoText(favoriteMemo.value.trim())};
   if(!validFavorite(f)){favoriteMessage.textContent='출발역과 도착역을 다르게 선택해주세요.';return}
   if(favorites.some(v=>v.line===f.line&&v.route===f.route&&v.origin===f.origin&&v.destination===f.destination)){favoriteMessage.textContent='이미 저장한 즐겨찾기예요.';return}
   if(storeFavorites([...favorites,f])){favoriteMessage.textContent='이 브라우저에 저장했어요.';document.querySelector('#favorite-editor').open=false}
