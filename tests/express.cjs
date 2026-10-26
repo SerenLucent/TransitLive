@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const ctx={document:{querySelector:()=>({})},normalizeStation:v=>String(v||'').replace(/행$/,'')};
+vm.createContext(ctx);vm.runInContext(fs.readFileSync('express-data.js','utf8')+'\n'+fs.readFileSync('express.js','utf8')+'\nexpressDayOverride="weekday";',ctx);
+assert.equal(ctx.expressStopInfo(63,{btrainNo:'5708',bstatnNm:'문산',trainLineNm:'문산행 (급행)'},'수색').stops,false,'5708 passes Susaek even when listed by arrival API');
+assert.equal(ctx.expressStopInfo(63,{trainNo:'K5708',statnTnm:'문산',directAt:'1'},'가좌').stops,true);
+assert.equal(ctx.expressStopInfo(63,{trainNo:'5852',statnTnm:'수색',directAt:'1'},'수색').stops,true,'terminal express stops at Susaek');
+assert.equal(ctx.expressStopInfo(63,{trainNo:'2512',statnTnm:'문산',directAt:'1'},'수색').stops,false,'Seoul branch express also passes Susaek');
+assert.equal(ctx.expressStopInfo(63,{trainNo:'5106',statnTnm:'문산',directAt:'0'},'수색').stops,true,'ordinary train at Gajwa can be shown');
+assert.equal(ctx.expressStationKind(63,'가좌'),1);assert.equal(ctx.expressStationKind(63,'수색'),2,'some express patterns stop and some pass');
+assert.equal(ctx.expressStationKind(63,'파주'),2,'central-section express stops here but Gyeongui-section express passes');
+assert.equal(ctx.expressStationKind(63,'임진강'),0,'no red stop ring outside express service');
+assert.equal(ctx.expressStopInfo(9,{directAt:'1'},'흑석').stops,false);assert.equal(ctx.expressStopInfo(9,{directAt:'1'},'노량진').stops,true);
+assert.equal(ctx.expressStopInfo(63,{trainNo:'9999',directAt:'1'},'수색').stops,null,'unknown pattern never assumed stopping');
+assert.equal(ctx.expressStopInfo(63,{trainNo:'5708',statnTnm:'다른역',directAt:'1'},'수색').stops,null,'conflicting destination invalidates schedule match');
+vm.runInContext('expressDayOverride="holiday"',ctx);
+assert.equal(ctx.expressStationKind(63,'가좌'),0,'no weekday-only express rings on holiday timetable');
+assert.equal(ctx.expressStationKind(9,'김포공항'),1,'line 9 express operates on both timetable types');
+console.log('PASS express patterns: stop/pass by train, branch, terminal, conditional map rings, weekday/holiday, unknowns');

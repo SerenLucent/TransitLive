@@ -8,6 +8,7 @@ const trainIcon='<img src="assets/train-line2-short.png" alt="" draggable="false
 function rebuildStations(){
   stations.replaceChildren();
   names.forEach((name,i)=>{const button=document.createElement('button');button.className='station';button.innerHTML='<span class="node"></span><span>'+name+'</span>';button.setAttribute('aria-label',name+'역 실시간 도착정보');button.onclick=()=>select(i,true);stations.append(button)});
+  if(typeof updateExpressMap==='function')updateExpressMap();
 }
 function changeLine(number,routeIndex=0,stationName=null){
   currentLine=LINES[number];document.title='Transit Live · '+currentLine.name;currentRoute=currentLine.routes[routeIndex];names=currentRoute.names.slice();selected=Math.max(0,names.indexOf(stationName));
