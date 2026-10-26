@@ -2,7 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const files = {'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/live.js':'live.js','/lines.js':'lines.js','/line-search.js':'line-search.js','/assets/train-line2-short.png':'assets/train-line2-short.png'};
-for(const file of ['favorites.js','express-data.js','express.js','assets/transit-live-icon.svg'])files['/'+file]=file;
+for(const file of ['favorites.js','express-data.js','express.js','assets/transit-live-icon.svg','assets/transit-live-mark.svg'])files['/'+file]=file;
 http.createServer((req,res)=>{
   const file=files[new URL(req.url,'http://localhost').pathname];
   if(!file){res.writeHead(404);res.end('Not found');return;}
