@@ -30,6 +30,7 @@ function fillFavoriteStations(){
   const route=LINES[favoriteLine.value].routes[Number(favoriteRoute.value)];
   [favoriteOrigin,favoriteDestination].forEach(select=>{select.replaceChildren();route.names.forEach(n=>select.append(favoriteOption(n,n==='서울'?'서울역':n+'역')))});
   favoriteDestination.selectedIndex=Math.min(1,route.names.length-1);
+  if(window.refreshCustomSelects)window.refreshCustomSelects();
 }
 function fillFavoriteRoutes(){
   favoriteRoute.replaceChildren();LINES[favoriteLine.value].routes.forEach((r,i)=>favoriteRoute.append(favoriteOption(i,r.name)));fillFavoriteStations();
@@ -62,6 +63,7 @@ favoriteLine.onchange=fillFavoriteRoutes;favoriteRoute.onchange=fillFavoriteStat
 document.querySelector('#favorite-current').onclick=()=>{
   favoriteLine.value=currentLine.number;fillFavoriteRoutes();favoriteRoute.value=currentLine.routes.indexOf(currentRoute);fillFavoriteStations();favoriteOrigin.value=names[selected];
   if(live.destination!==null)favoriteDestination.value=names[live.destination];
+  if(window.refreshCustomSelects)window.refreshCustomSelects();
 };
 favoriteForm.onsubmit=e=>{
   e.preventDefault();

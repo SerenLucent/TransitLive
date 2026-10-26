@@ -5,7 +5,7 @@ function setup(blocked=false){
  function element(){return {value:'',children:[],style:{setProperty(){}},append(e){this.children.push(e);if(!this.value)this.value=String(e.value??'')},replaceChildren(){this.children=[];this.value=''},setAttribute(){},scrollIntoView(){this.scrolled=true}}}
  const el=k=>{if(!elements.has(k))elements.set(k,element());return elements.get(k)};
  const route={name:'본선',names:['강남','교대','서초']};
- const ctx={LINES:{2:{number:2,name:'2호선',color:'green',routes:[route]}},currentLine:{number:2,routes:[route]},currentRoute:route,names:route.names,selected:0,live:{destination:2},localStorage:{getItem:()=>saved,setItem(k,v){if(blocked)throw Error('blocked');saved=v}},document:{querySelector:el,createElement:element},changeLine(...args){opened=args},chooseDestination(i){chosen=i},console};
+ const ctx={window:{},LINES:{2:{number:2,name:'2호선',color:'green',routes:[route]}},currentLine:{number:2,routes:[route]},currentRoute:route,names:route.names,selected:0,live:{destination:2},localStorage:{getItem:()=>saved,setItem(k,v){if(blocked)throw Error('blocked');saved=v}},document:{querySelector:el,createElement:element},changeLine(...args){opened=args},chooseDestination(i){chosen=i},console};
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('favorites.js','utf8'),ctx);return {ctx,el};
 }
 let {ctx,el}=setup();assert.equal(el('#favorite-toggle').hidden,true,'no toggle without favorites');el('#favorite-current').onclick();el('#favorite-form').onsubmit({preventDefault(){}});

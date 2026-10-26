@@ -28,6 +28,7 @@ function changeLine(number,routeIndex=0,stationName=null){
   rebuildStations();layout();select(selected);
   if(window.updateLineMatches)window.updateLineMatches();
   if(window.changeLiveLine)window.changeLiveLine();
+  if(window.refreshCustomSelects)window.refreshCustomSelects();
 }
 Object.values(LINES).forEach(line=>{const b=document.createElement('button');b.type='button';b.dataset.line=line.number;b.dataset.extended=line.number>9?'true':'false';b.setAttribute('aria-label',line.name);b.style.setProperty('--tab-color',line.color);b.innerHTML='<b>'+line.badge+'</b><span>'+line.name+'</span>';b.onclick=()=>window.chooseLineFromSearch?window.chooseLineFromSearch(line.number):changeLine(line.number);document.querySelector('#line-buttons').append(b)});
 document.querySelector('#route-picker').onchange=e=>changeLine(currentLine.number,Number(e.target.value));
