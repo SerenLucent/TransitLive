@@ -41,7 +41,7 @@
 .legend{flex-wrap:wrap}.legend-express-train,.map-express-badge{display:inline-block;background:#d9434c;color:white;border-radius:3px;font-style:normal;font-weight:700;font-size:8px;line-height:1.4;padding:1px 3px}.legend-express-train{margin-right:4px}.map-express-badge{position:absolute;left:50%;top:-7px;transform:translateX(-50%);white-space:nowrap;border:1px solid white}
 #express-controls{display:inline-flex;align-items:center;gap:6px;margin-left:10px}#express-controls[hidden],#express-legend[hidden],#express-conditional-legend[hidden]{display:none}
 .express-tag{display:inline-block;border-radius:4px;background:#fff0f0;color:#b32630;padding:2px 5px;margin-right:5px;font-size:9px;font-weight:700}
-.map-express-badge{transform:translateX(-50%) rotate(var(--badge-rotation,0deg))}
+.map-express-badge{top:50%;transform:translate(-50%,-50%) rotate(var(--badge-rotation,0deg));font-size:7px;line-height:1.2;padding:1px 2px}
 .train-up{--arrow-color:#e34d54}.train-down{--arrow-color:#397cdd}
 .train-direction-arrow{position:absolute;left:calc(100% + 1px);top:50%;transform:translateY(-50%);width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--arrow-color);filter:drop-shadow(0 0 1px white)}
 @media(max-width:600px){
