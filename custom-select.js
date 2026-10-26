@@ -9,7 +9,12 @@ function createCustomSelect(select){
   trigger.setAttribute('role','combobox');trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');trigger.setAttribute('aria-controls',menu.id);
   menu.setAttribute('role','listbox');menu.setAttribute('aria-label',name);
   select.parentNode.insertBefore(root,select);root.append(select,trigger,menu);select.hidden=true;
-  if(label)label.htmlFor=trigger.id;
+  if(label?.contains(root)){
+    // A label wrapping multiple interactive controls can forward a second click.
+    const field=document.createElement('div');field.className='custom-select-field';
+    while(label.firstChild)field.append(label.firstChild);
+    label.replaceWith(field);
+  }else if(label)label.htmlFor=trigger.id;
   const content=option=>{
     const fragment=document.createDocumentFragment(),text=document.createElement('span');
     const line=select.id==='favorite-line'?LINES[option.value]:null;

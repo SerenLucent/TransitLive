@@ -162,3 +162,5 @@
  #map-line-badge{margin-right:5px;padding:0 5px;font-size:10px}
  #map-line-title{font-size:12px}
 }
+
+.favorite-fields .custom-select-field{font-size:11px;color:#718478}.favorite-fields .custom-select-field:nth-child(2) .custom-select-menu{left:auto;right:0}
