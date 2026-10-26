@@ -40,7 +40,7 @@ function createCustomSelect(select){
     });
   }
   function open(last=false){customSelects.forEach(item=>item.close());refresh();menu.hidden=false;trigger.setAttribute('aria-expanded','true');const options=[...menu.querySelectorAll('button:not(:disabled)')];(options.find(b=>b.getAttribute('aria-selected')==='true')||(last?options.at(-1):options[0]))?.focus()}
-  trigger.onclick=event=>{event.preventDefault();if(menu.hidden)open();else close()};
+  trigger.onclick=event=>{event.preventDefault();event.stopPropagation();if(menu.hidden)open();else close()};
   trigger.onkeydown=event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();open(event.key==='ArrowUp')}if(event.key==='Escape')close()};
   menu.onkeydown=event=>{
     if(event.key==='Escape'){event.preventDefault();close(true);return}
