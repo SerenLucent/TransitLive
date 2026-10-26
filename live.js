@@ -22,7 +22,7 @@ function requestLive(action, station='') {
 function installPositions(data){
   const old=new Map(live.models.map(m=>[m.id,m]));
   live.positions=data;const now=performance.now();
-  live.models=data.items.flatMap(r=>{
+  live.models=freshPositionRows(data).flatMap(r=>{
     const canonical=currentLine.stations.find(s=>s.id&&s.id===r.statnId);
     const i=names.indexOf(canonical?canonical.name:normalizeStation(r.statnNm));if(i<0)return [];
     // Along the listed station order, inner-circle trains advance; outer reverse.
@@ -84,6 +84,7 @@ function trainJourney(row,direction){
 }
 window.paintLive=now=>{
   live.models.forEach(m=>{
+    m.el.hidden=dataOld(live.positions)||!recentPosition(m.row);
     const p=modelPosition(m,now),q=positionAt(p),a=positionAt(wrap(p+m.sign*.015)),angle=Math.atan2(a.y-q.y,a.x-q.x);
     m.el.style.left=q.x+'px';m.el.style.top=(q.y+(m.sign>0?-13:13))+'px';m.el.style.transform=`translate(-50%,-50%) rotate(${angle*180/Math.PI}deg)`;m.el.firstElementChild.style.transform=Math.cos(angle)<0?'scaleY(-1)':'none';
   });
@@ -111,12 +112,13 @@ function upcomingArrivals(items){
   const distance=r=>r.positionDistance??(/^\d{5}/.test(String(r.ordkey||''))?Number(String(r.ordkey).slice(2,5)):Infinity);
   return items.filter(r=>String(r.arvlCd)!=='2').slice().sort((a,b)=>rank(a)-rank(b)||distance(a)-distance(b)||String(a.ordkey||'').localeCompare(String(b.ordkey||''),undefined,{numeric:true})).filter(r=>{const id=r.btrainNo;if(!id)return true;if(seen.has(String(id)))return false;seen.add(String(id));return true});
 }
-function freshPositionRows(){
-  if(!live.positions||dataOld(live.positions))return [];
-  return (live.positions.items||[]).filter(p=>{
-    const received=Date.parse(String(p.recptnDt||'').replace(' ','T')+'+09:00');
-    return Number.isFinite(received)&&Date.now()-received<=120000&&received-Date.now()<=60000;
-  });
+function recentPosition(position){
+  const received=Date.parse(String(position.recptnDt||'').replace(' ','T')+'+09:00');
+  return Number.isFinite(received)&&Date.now()-received<=300000&&received-Date.now()<=60000;
+}
+function freshPositionRows(data=live.positions){
+  if(!data||dataOld(data))return [];
+  return (data.items||[]).filter(recentPosition);
 }
 function positionStation(position){
   const canonical=currentLine.stations.find(s=>s.id&&s.id===position.statnId);

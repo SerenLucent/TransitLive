@@ -3,7 +3,7 @@ const elements=new Map();
 function element(){return {style:{},value:'',children:[],textContent:'',innerHTML:'',addEventListener(){},classList:{toggle(){}},setAttribute(){},append(e){this.children.push(e)},replaceChildren(){this.children=[]},remove(){},firstElementChild:{style:{}}}}
 const el=k=>{if(!elements.has(k))elements.set(k,element());return elements.get(k)};
 let calls=0;
-const document={hidden:false,querySelector:el,addEventListener(){},createElement:element,head:{append(script){calls++;const u=new URL(script.src),station=u.searchParams.get('station');const data={ok:true,line:'2호선',updatedAt:Date.now(),stale:false,items:station?[{updnLine:'내선',ordkey:'11001',btrainNo:'2226',bstatnNm:'성수',arvlMsg2:'4분 후',arvlMsg3:'삼성'}]:[{statnNm:'강남',trainNo:'2226',updnLine:'0',trainSttus:'1'},{statnNm:'신설동',trainNo:'1595',updnLine:'1',trainSttus:'1'}]};queueMicrotask(()=>context.window[u.searchParams.get('callback')](data))}}};
+const document={hidden:false,querySelector:el,addEventListener(){},createElement:element,head:{append(script){calls++;const u=new URL(script.src),station=u.searchParams.get('station');const data={ok:true,line:'2호선',updatedAt:Date.now(),stale:false,items:station?[{updnLine:'내선',ordkey:'11001',btrainNo:'2226',bstatnNm:'성수',arvlMsg2:'4분 후',arvlMsg3:'삼성'}]:[{statnNm:'강남',trainNo:'2226',updnLine:'0',trainSttus:'1',recptnDt:new Date(Date.now()+9*3600000).toISOString().slice(0,19).replace('T',' ')},{statnNm:'신설동',trainNo:'1595',updnLine:'1',trainSttus:'1'}]};queueMicrotask(()=>context.window[u.searchParams.get('callback')](data))}}};
 const context={currentLine:{number:2,name:'2호선',stations:[]},currentRoute:{loop:true},stationFor:()=>null,normalizeStation:v=>v,document,window:{},URL,Date,Math,Map,Promise,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout(){},names:['시청',...Array(20).fill('기타'),'강남',...Array(21).fill('기타')],selected:21,paused:false,trainIcon:'<img>',trains:element(),positionAt:p=>({x:p,y:100}),renderDetail(){if(context.window.renderLive)context.window.renderLive()}};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('express-data.js','utf8')+'\n'+fs.readFileSync('express.js','utf8')+'\nexpressDayOverride="weekday";',context);
@@ -19,7 +19,7 @@ setImmediate(async()=>{
   assert.equal(context.upcomingArrivals(arrivalRows)[0].btrainNo,'later','next train becomes current after departure');
   assert.equal(context.upcomingArrivals([{btrainNo:'far',ordkey:'11005',arvlCd:'99'},{btrainNo:'near',ordkey:'12001',arvlCd:'3'}])[0].btrainNo,'near','nearest station distance precedes supplied sequence');
   assert.match(el('#detail').innerHTML,/2226/);
-  assert.match(el('#detail').innerHTML,/4분 후/);
+  assert.match(el('#detail').innerHTML,/도착 · 정차 중/,'newer platform position overrides older four-minute message');
   el('#destination').value='';context.renderDestinationResults();
   assert.equal(el('#destination-results').hidden,true,'empty destination keeps suggestions closed');
   el('#destination').value='강';context.renderDestinationResults();
@@ -65,6 +65,8 @@ setImmediate(async()=>{
   assert.equal(context.stoppingArrivals(official).length,0,'official feed express that passes Susaek is removed');
   const corrected=context.stoppingArrivals([{btrainNo:'5106',bstatnNm:'문산',updnLine:'상행',ordkey:'01018문산0',arvlCd:'99',arvlMsg2:'18개 역 전'}])[0];
   assert.equal(corrected.arvlMsg2,'2개 역 전','newer nearby position corrects an older distant message for same train');
+  context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-180000).toISOString().slice(0,19).replace('T',' ');
+  assert(context.positionArrivalRows([],'상행').some(r=>r.btrainNo==='5106'),'three-minute observation still matches the visible map train');
   vm.runInContext('live.destination=null;live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/이번 열차<\/b>[\s\S]*?5106/,'visible nearest stopping train is not treated as absent');
   assert.doesNotMatch(el('#detail').innerHTML,/5708/);
