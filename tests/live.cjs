@@ -19,6 +19,11 @@ setImmediate(async()=>{
   assert.equal(context.upcomingArrivals(arrivalRows)[0].btrainNo,'later','next train becomes current after departure');
   assert.equal(context.upcomingArrivals([{btrainNo:'far',ordkey:'11005',arvlCd:'99'},{btrainNo:'near',ordkey:'12001',arvlCd:'3'}])[0].btrainNo,'near','nearest station distance precedes supplied sequence');
   assert.match(el('#detail').innerHTML,/2226/);
+  assert.match(el('#detail').innerHTML,/platform-board-header/,'current train metadata belongs in board header');
+  assert.match(el('#detail').innerHTML,/platform-main-status/,'arrival status is the board headline');
+  assert.doesNotMatch(el('#detail').innerHTML,/platform-primary-grid/,'current and next trains are not separate cards');
+  assert.match(context.platformMessage({arvlMsg2:'2분 후',arvlMsg3:'',positionDistance:1},'상행').main,/2분 후.*도착/,'provided ETA is the headline');
+  assert.doesNotMatch(context.platformMessage({arvlMsg2:'1개 역 전',positionDistance:1,positionBased:true},'상행').main,/분|초/,'position-only arrivals never invent ETA');
   assert.match(el('#detail').innerHTML,/도착 · 정차 중/,'newer platform position overrides older four-minute message');
   el('#destination').value='';context.renderDestinationResults();
   assert.equal(el('#destination-results').hidden,true,'empty destination keeps suggestions closed');

@@ -191,6 +191,34 @@ function positionArrivalRows(items,direction){
   }
   return rows;
 }
+function platformDistance(r,direction){
+  if(['0','1'].includes(String(r.arvlCd)))return 0;
+  if(Number.isFinite(r.positionDistance))return r.positionDistance;
+  const sign=['내선','순환','하행'].includes(direction)?1:-1;
+  const index=names.indexOf(normalizeStation(r.arvlMsg3||'').trim());
+  if(index>=0){const distance=(selected-index)*sign;return currentRoute.loop?(distance+names.length)%names.length:distance>=0?distance:null}
+  const match=String(r.arvlMsg2||'').match(/(\d+)\s*(?:개\s*)?역\s*전/);
+  return match?Number(match[1]):null;
+}
+function platformMessage(r,direction){
+  const raw=String(r.arvlMsg2||''),code=String(r.arvlCd),distance=platformDistance(r,direction);
+  const state=code==='1'?'도착 · 정차 중':code==='0'?'역 진입':/전전역.*출발/.test(raw)?'전전역 출발':/전역.*출발/.test(raw)?'전역 출발':/전전역.*(?:정차|도착|진입)/.test(raw)?'전전역 정차':/전역.*(?:정차|도착|진입)/.test(raw)?'전역 정차':/출발/.test(raw)?(distance===1?'전역 출발':distance===2?'전전역 출발':'이동 중'):/정차|도착/.test(raw)&&!/[분초].*후/.test(raw)?(distance===1?'전역 정차':'이동 중'):'이동 중';
+  const time=raw.match(/(?:\d+\s*분(?:\s*\d+\s*초)?|\d+\s*초)\s*후/);
+  const seconds=Number(r.barvlDt);
+  const eta=!r.positionBased&&!['0','1'].includes(code)?time?.[0]||(seconds>0?(Math.floor(seconds/60)?Math.floor(seconds/60)+'분 ':'')+(seconds%60?seconds%60+'초 ':'')+'후':''):'';
+  const distanceText=distance!==null?'('+distance+'역 전)':'';
+  return {main:eta?`<em>${esc(eta)}</em> 도착`:distance>0?`<em>${distanceText}</em> ${esc(state)}`:esc(state),sub:eta?[distanceText,state!=='이동 중'?state:''].filter(Boolean).join(' '):'',distance};
+}
+function platformDestination(r,direction){
+  const journey=trainJourney(r,direction);
+  return `${r.isExpress?'<span class="express-tag">급행</span>':''}<span class="platform-destination">${esc(journey.name?journey.name+'행':'행선지 미제공')}</span>`;
+}
+function platformNotes(r,direction,route){
+  const journey=trainJourney(r,direction);
+  const terminal=journey.name===names[selected]?'이 역 종착 · '+journey.name+' 종착':journey.shortTurn?'중간 종착 · '+journey.name+' 종착':'';
+  const coverage=route?(journey.reaches===true?'목적지까지 운행':journey.reaches===false?'목적지까지 가지 않아요':'목적지 운행 여부 확인 필요'):'';
+  return `${terminal?`<b class="platform-terminal">${esc(terminal)}</b>`:''}${coverage?`<span class="coverage-label ${journey.reaches===false?'does-not-reach':''}">${esc(coverage)}</span>`:''}`;
+}
 function platformDiagram(rows,direction){
   const left=['상행','내선','순환'].includes(direction),sign=['내선','순환','하행'].includes(direction)?1:-1;
   const stations=Array.from({length:5},(_,i)=>{
@@ -198,16 +226,15 @@ function platformDiagram(rows,direction){
     const valid=currentRoute.loop||index>=0&&index<names.length;
     return {name:valid?names[(index%names.length+names.length)%names.length]:'',selected:offset===0};
   });
+  const slots=[];
   const markers=rows.slice(0,2).map((r,i)=>{
-    const location=normalizeStation(r.arvlMsg3||''),index=names.indexOf(location);
-    let distance=Number.isFinite(r.positionDistance)?r.positionDistance:index>=0?(selected-index)*sign:null;
-    if(currentRoute.loop&&distance!==null)distance=(distance+names.length)%names.length;
-    if(['0','1'].includes(String(r.arvlCd)))distance=0;
+    const distance=platformDistance(r,direction);
     if(distance===null||distance<0)return '';
     const slot=left?Math.min(4,distance):4-Math.min(4,distance);
-    return `<div class="platform-train ${left?'faces-left':''} train-slot-${i}" style="left:${10+slot*20}%"><span>${i?'다음':'이번'}${r.isExpress?' · 급행':''}${distance>4?' · '+distance+'역 전':''}</span><img src="assets/train-line2-short.png" alt="${i?'다음':'이번'} 열차${left?' 왼쪽':' 오른쪽'} 방향"></div>`;
+    const overlap=slots.includes(slot);slots.push(slot);
+    return `<div class="platform-train ${left?'faces-left':''} train-slot-${i}${overlap?' same-station':''}" style="left:${10+slot*20}%"><span>${i?'다음':'이번'}${r.isExpress?' · 급행':''}${distance>4?' · '+distance+'역 전':''}</span><img src="assets/train-line2-short.png" alt="${i?'다음':'이번'} 열차${left?' 왼쪽':' 오른쪽'} 방향"></div>`;
   }).join('');
-  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>`<div class="platform-station ${s.selected?'is-current':''}" style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span></div>`).join('')}${markers}</div>`;
+  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>`<div class="platform-station ${s.selected?'is-current':''}" style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span>${s.selected?'<b class="selected-station-tag">선택역</b>':''}</div>`).join('')}${markers}</div>`;
 }
 window.renderLive=()=>{
   const name=names[selected],data=live.arrivals.get(arrivalKey()),old=dataOld(data);
@@ -226,16 +253,17 @@ window.renderLive=()=>{
     const recommended=route&&(route.direction===direction||route.direction==='양방향');
     const moreKey=arrivalKey()+':'+direction;
     const directionName=direction+(directions[0]==='내선'?'순환':'');
-    const visibleRows=rows.slice(0,6),extra=Math.min(4,Math.max(0,rows.length-2));
+    const extra=rows.slice(2,6),first=rows[0],next=rows[1];
     const moreLabel=directionName+' 열차 ';
-    return `<section class="direction-group platform-group ${['상행','내선','순환'].includes(direction)?'platform-up':'platform-down'}${recommended?' recommended':''}" aria-label="${directionName}${recommended?' · 목적지 추천 방향':''}"><div class="direction"><span>${['상행','내선','순환'].includes(direction)?'←':'→'} ${directionName}</span><span>${recommended?'⚑ 목적지 방향':old?'이전 정보':'도착 안내'}</span></div>${platformDiagram(rows,direction)}`+(rows.length?visibleRows.map((r,i)=>{
-      const journey=trainJourney(r,direction);
-      const coverage=route?(journey.reaches===true?'목적지까지 운행':journey.reaches===false?'목적지까지 가지 않아요':'목적지 운행 여부 확인 필요'):'';
-      const moreStart=i===2?`</div><details class="arrival-more" data-label="${esc(moreLabel)}" data-key="${esc(moreKey)}" data-count="${extra}" ${live.expandedArrivals.has(moreKey)?'open':''}><summary>${moreLabel}${live.expandedArrivals.has(moreKey)?'접기':'더 보기'} (${extra}대)</summary><div class="arrival-extra-grid">`:i===0?'<div class="platform-primary-grid">':'';
-      return `${moreStart}<div class="arrival ${i?'secondary ':''}${journey.reaches===true&&!old?'train-recommended ':''}${journey.shortTurn?'short-turn-card':''}"><div class="arrival-top"><b>${i===0?'이번 열차':i===1?'다음 열차':(i+1)+'번째 열차'} <small class="arrival-train-number">${esc(r.btrainNo||'번호 미제공')}</small></b><strong class="live-message">${esc(r.arvlMsg2||'시간 미제공')}</strong></div><p class="train-destination">${r.isExpress?'<span class="express-tag">급행</span>':''}<b class="destination-name">${esc(journey.name?journey.name+'행':'행선지 미제공')}</b></p><p class="terminus-label">${journey.name===name?'<span class="short-turn-tag">이 역 종착</span> ':''}${journey.shortTurn?'<span class="short-turn-tag">중간 종착</span> ':''}<b class="destination-name">${esc(journey.name?journey.name+' 종착':'종착역 미제공')}</b></p><p class="train-location">현재위치 ${esc(r.arvlMsg3||'정보 미제공')}</p>${r.positionBased?'<p class="position-arrival-note">위치정보 기준 · 도착시간 미제공</p>':''}${coverage?`<p class="coverage-label ${journey.reaches===false?'does-not-reach':''}">${esc(coverage)}</p>`:''}</div>${i===visibleRows.length-1?(extra?'</div></details>':'</div>'):''}`;
-    }).join(''):`<p class="detail-caption">${esc(live.arrivalError||(data?'현재 제공되는 도착정보가 없어요.':'도착정보를 불러오는 중…'))}</p>`)+`</section>`;
+    const up=['상행','내선','순환'].includes(direction);
+    const firstMessage=first?platformMessage(first,direction):null;
+    const boardHeader=`<div class="platform-board-header"><h3><i class="detail-direction-triangle ${up?'direction-up':'direction-down'}" aria-hidden="true"></i>${directionName} <span aria-hidden="true">${up?'←':'→'}</span></h3>${first?`<span class="platform-current-label">이번 열차 <small>#${esc(first.btrainNo||'번호 미제공')}</small></span><div class="platform-badges">${platformDestination(first,direction)}</div>`:''}</div>`;
+    const main=first?`<div class="platform-main-status"><strong>${firstMessage.main}</strong>${firstMessage.sub?`<p>${esc(firstMessage.sub)}</p>`:''}<div class="platform-main-notes">${platformNotes(first,direction,route)}</div></div>`:`<p class="platform-empty">${esc(live.arrivalError||(data?'현재 제공되는 도착정보가 없어요.':'도착정보를 불러오는 중…'))}</p>`;
+    const nextRow=next?`<div class="platform-next-row"><span class="platform-next-label">다음 열차 <small>#${esc(next.btrainNo||'번호 미제공')}</small></span><div class="platform-next-status"><strong>${platformMessage(next,direction).main}</strong>${platformMessage(next,direction).sub?`<small>${esc(platformMessage(next,direction).sub)}</small>`:''}</div><div class="platform-badges">${platformDestination(next,direction)}</div><div class="platform-next-notes">${platformNotes(next,direction,route)}</div></div>`:first?'<div class="platform-next-row platform-no-next">다음 열차 정보가 아직 없어요.</div>':'';
+    const more=extra.length?`<details class="arrival-more" data-label="${esc(moreLabel)}" data-key="${esc(moreKey)}" data-count="${extra.length}" ${live.expandedArrivals.has(moreKey)?'open':''}><summary>${moreLabel}${live.expandedArrivals.has(moreKey)?'접기':'더 보기'} (${extra.length}대) <small>· 최대 4대</small></summary><div class="arrival-extra-grid">${extra.map((r,i)=>{const message=platformMessage(r,direction);return `<div class="arrival platform-extra-card"><div class="platform-extra-header"><b><i class="detail-direction-triangle ${up?'direction-up':'direction-down'}" aria-hidden="true"></i>${directionName} · ${i+3}번째 열차</b><small>#${esc(r.btrainNo||'번호 미제공')}</small><div class="platform-badges">${platformDestination(r,direction)}</div></div><strong class="platform-extra-status">${message.main}</strong>${message.sub?`<p>${esc(message.sub)}</p>`:''}<p class="platform-extra-location">현재위치 ${esc(r.arvlMsg3||'정보 미제공')}</p><div class="platform-extra-notes">${platformNotes(r,direction,route)}</div></div>`}).join('')}</div></details>`:'';
+    return `<section class="direction-group platform-group ${up?'platform-up':'platform-down'}${recommended?' recommended':''}" aria-label="${directionName}${recommended?' · 목적지 추천 방향':''}"><div class="platform-board">${recommended?'<span class="platform-search-flag">검색한 구간</span>':''}${boardHeader}${main}${platformDiagram(rows,direction)}${nextRow}</div>${more}</section>`;
   }).join('');
-  document.querySelector('#detail').innerHTML=`<div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${hasPositionArrivals?'<br>위치정보 보완 열차는 역 수 기준이며, 급행 추월 등으로 실제 도착 순서와 다를 수 있어요.':''}${route?'<br>방향은 역 수 기준 · 열차별 종착역까지 확인해 안내합니다. 다른 구간 종착은 별도 확인이 필요해요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 30초 간격 확인</div>`;
+  document.querySelector('#detail').innerHTML=`<div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${hasPositionArrivals?'<br>위치정보 기준 · 도착시간 미제공 열차는 역 수로 안내하며, 급행 추월 등으로 실제 도착 순서와 다를 수 있어요.':''}${route?'<br>방향은 역 수 기준 · 열차별 종착역까지 확인해 안내합니다. 다른 구간 종착은 별도 확인이 필요해요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 30초 간격 확인</div>`;
   updateStatus();
 };
 document.querySelector('#detail').addEventListener('click',event=>{
