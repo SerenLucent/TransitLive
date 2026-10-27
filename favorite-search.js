@@ -13,7 +13,7 @@ for(const kind of ['origin','destination']){
       const button=document.createElement('button');button.type='button';button.setAttribute('role','option');button.textContent=option.textContent;
       button.onclick=()=>{select.value=option.value;refresh();input.focus();close()};results.append(button);
     }
-    if(!matches.length){const empty=document.createElement('p');empty.textContent='이 구간에 없는 역이에요.';results.append(empty)}
+    if(!matches.length){const empty=document.createElement('p');empty.textContent='이 호선에 없는 역이에요.';results.append(empty)}
     results.hidden=false;input.setAttribute('aria-expanded','true');
   }
   input.oninput=()=>{select.value='';const exact=[...select.options].find(o=>key(o.value)===key(input.value));if(exact)select.value=exact.value;show()};

@@ -13,7 +13,7 @@ assert.equal(el('#favorite-origin').value,'','origin starts empty');assert.equal
 el('#favorite-form').onsubmit({preventDefault(){}});assert.equal(saved,null,'empty journey cannot be saved');
 assert.match(el('#favorite-message').textContent,/검색해서 선택/);
 el('#favorite-current').onclick();assert.equal(el('#favorite-origin').value,'강남','explicit import fills origin');
-el('#favorite-route').onchange();assert.equal(el('#favorite-origin').value,'','changing route clears origin');assert.equal(el('#favorite-destination').value,'','changing route clears destination');
+el('#favorite-line').onchange();assert.equal(el('#favorite-origin').value,'','changing line clears origin');assert.equal(el('#favorite-destination').value,'','changing line clears destination');
 el('#favorite-current').onclick();el('#favorite-memo').value='연습실에서 집으로 2호선';el('#favorite-form').onsubmit({preventDefault(){}});
 assert.equal(JSON.parse(saved)[0].memo,'연습실에서 집으로 2호선','memo persisted');
 assert.equal(vm.runInContext("memoText('가'.repeat(21)).length",ctx),20,'memo limited to 20 characters');
@@ -37,4 +37,18 @@ el('#favorite-list').children[0].children[1].onclick();assert.equal(JSON.parse(s
 assert.equal(el('#favorite-toggle').hidden,true,'last deletion hides toggle');assert.equal(el('#favorite-list').hidden,true);
 ({ctx,el}=setup(true));el('#favorite-current').onclick();el('#favorite-form').onsubmit({preventDefault(){}});assert.match(el('#favorite-message').textContent,/저장 공간/);assert.equal(el('#favorite-list').children.length,0,'failed storage does not claim saved');
 saved='broken JSON';({el}=setup());assert.match(el('#favorite-message').textContent,/불러오지/);
+saved=null;({ctx,el}=setup());
+ctx.LINES[2].routes.push({name:'서울역 지선',names:['문산','수색','강매','서울']});
+el('#favorite-line').onchange();assert(el('#favorite-origin').children.some(o=>o.value==='서울'),'search includes every branch on the line');
+el('#favorite-origin').value='수색';el('#favorite-destination').value='서울';el('#favorite-form').onsubmit({preventDefault(){}});
+assert.equal(JSON.parse(saved)[0].route,1,'route inferred automatically from chosen stations');
+el('#favorite-list').children[0].children[0].onclick();assert.deepEqual(opened,[2,1,'수색']);
+ctx.LINES[2].routes.push({name:'중복 구간',names:['문산','수색','강매','서울']});
+assert.equal(ctx.favoriteRouteIndex(2,'수색','서울'),1,'shared segment picks a stable route');
+assert.equal(ctx.favoriteRouteIndex(2,'수색','서울',2),2,'existing favorites retain valid stored route');
+el('#favorite-origin').value='강남';el('#favorite-destination').value='서울';el('#favorite-form').onsubmit({preventDefault(){}});
+assert.equal(JSON.parse(saved).length,1,'separate branches do not silently save a wrong route');assert.match(el('#favorite-message').textContent,/환승/);
+const actualLines=vm.runInNewContext(fs.readFileSync('lines.js','utf8')+'\nLINES');ctx.LINES[63]=actualLines[63];
+assert(ctx.favoriteRouteIndex(63,'수색','강매')>=0,'shared Gyeongui segment resolves without branch selection');
+const seoulRoute=ctx.favoriteRouteIndex(63,'수색','서울');assert(seoulRoute>=0);assert(actualLines[63].routes[seoulRoute].names.includes('서울'),'Seoul branch resolved from full line stations');
 console.log('PASS favorites: save, duplicate prevention, reload, route/destination selection, deletion, storage failure');

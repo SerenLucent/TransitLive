@@ -53,6 +53,6 @@ function createCustomSelect(select){
   customSelects.push({root,close,refresh});refresh();
 }
 window.refreshCustomSelects=()=>customSelects.forEach(item=>item.refresh());
-document.querySelectorAll('#favorite-line,#favorite-route,#route-picker').forEach(createCustomSelect);
+document.querySelectorAll('#favorite-line,#route-picker').forEach(createCustomSelect);
 document.addEventListener('click',event=>customSelects.forEach(item=>{if(!item.root.contains(event.target))item.close()}));
 document.querySelector('#favorite-editor').addEventListener('toggle',event=>{if(!event.target.open)customSelects.forEach(item=>item.close())});

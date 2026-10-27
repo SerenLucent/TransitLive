@@ -2,7 +2,6 @@
 const favoriteKey='transit-live:favorites:v1';
 const favoriteForm=document.querySelector('#favorite-form');
 const favoriteLine=document.querySelector('#favorite-line');
-const favoriteRoute=document.querySelector('#favorite-route');
 const favoriteOrigin=document.querySelector('#favorite-origin');
 const favoriteDestination=document.querySelector('#favorite-destination');
 const favoriteMessage=document.querySelector('#favorite-message');
@@ -20,9 +19,16 @@ function updateFavoriteDisclosure(){
   document.querySelector('#favorite-list').hidden=!favoritesExpanded;
 }
 favoriteToggle.onclick=()=>{favoritesExpanded=!favoritesExpanded;updateFavoriteDisclosure()};
+function favoriteRouteIndex(lineNumber,origin,destination,preferred){
+  const routes=LINES[lineNumber]?.routes||[];
+  const connects=r=>r.names.includes(origin)&&r.names.includes(destination);
+  if(preferred!==undefined&&routes[preferred]&&connects(routes[preferred]))return Number(preferred);
+  const distance=r=>{const d=Math.abs(r.names.indexOf(origin)-r.names.indexOf(destination));return r.loop?Math.min(d,r.names.length-d):d};
+  const candidates=routes.map((r,i)=>({r,i})).filter(({r})=>connects(r)).sort((a,b)=>distance(a.r)-distance(b.r));
+  return candidates[0]?.i??-1;
+}
 function validFavorite(f){
-  const line=LINES[f?.line],route=line?.routes[f?.route];
-  return !!route&&route.names.includes(f.origin)&&route.names.includes(f.destination)&&f.origin!==f.destination;
+  return !!f&&f.origin!==f.destination&&favoriteRouteIndex(f.line,f.origin,f.destination,f.route)>=0;
 }
 try{const saved=JSON.parse(localStorage.getItem(favoriteKey)||'[]');if(Array.isArray(saved))favorites=saved.filter(validFavorite)}catch(_){favoriteMessage.textContent='저장 공간을 사용할 수 없어 즐겨찾기를 불러오지 못했어요.'}
 function storeFavorites(next){
@@ -30,17 +36,14 @@ function storeFavorites(next){
 }
 function favoriteOption(value,label){const option=document.createElement('option');option.value=value;option.textContent=label;return option}
 function fillFavoriteStations(){
-  const route=LINES[favoriteLine.value].routes[Number(favoriteRoute.value)];
-  [favoriteOrigin,favoriteDestination].forEach(select=>{select.replaceChildren();route.names.forEach(n=>select.append(favoriteOption(n,n==='서울'?'서울역':n+'역')));select.selectedIndex=-1;select.value=''});
+  const stations=[...new Set(LINES[favoriteLine.value].routes.flatMap(r=>r.names))];
+  [favoriteOrigin,favoriteDestination].forEach(select=>{select.replaceChildren();stations.forEach(n=>select.append(favoriteOption(n,n==='서울'?'서울역':n+'역')));select.selectedIndex=-1;select.value=''});
   if(window.refreshCustomSelects)window.refreshCustomSelects();
   if(window.refreshFavoriteSearches)window.refreshFavoriteSearches();
 }
-function fillFavoriteRoutes(){
-  favoriteRoute.replaceChildren();LINES[favoriteLine.value].routes.forEach((r,i)=>favoriteRoute.append(favoriteOption(i,r.name)));fillFavoriteStations();
-}
 function openFavorite(f){
   if(!validFavorite(f)){favoriteMessage.textContent='노선이 변경되었어요. 즐겨찾기를 다시 저장해주세요.';return}
-  changeLine(Number(f.line),Number(f.route),f.origin);
+  changeLine(Number(f.line),favoriteRouteIndex(f.line,f.origin,f.destination,f.route),f.origin);
   chooseDestination(names.indexOf(f.destination));
   document.querySelector('#station-panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -53,7 +56,7 @@ function renderFavorites(){
     item.className='favorite-item';item.style.setProperty('--favorite-color',line.color);
     open.type='button';open.className='favorite-open';
     const title=document.createElement('strong'),caption=document.createElement('small');
-    title.textContent=f.origin+' → '+f.destination;caption.textContent=line.name+' · '+line.routes[f.route].name;
+    title.textContent=f.origin+' → '+f.destination;caption.textContent=line.name;
     const journey=document.createElement('span');journey.className='favorite-journey';journey.append(title);journey.append(caption);open.append(journey);
     if(f.memo){const memo=document.createElement('span');memo.className='favorite-memo';memo.textContent=memoText(f.memo);open.append(memo)}
     open.onclick=()=>openFavorite(f);
@@ -76,20 +79,22 @@ function renderFavorites(){
   });
 }
 Object.values(LINES).forEach(l=>favoriteLine.append(favoriteOption(l.number,l.name)));
-favoriteLine.value=currentLine.number;fillFavoriteRoutes();
-favoriteLine.onchange=fillFavoriteRoutes;favoriteRoute.onchange=fillFavoriteStations;
+favoriteLine.value=currentLine.number;fillFavoriteStations();
+favoriteLine.onchange=fillFavoriteStations;
 document.querySelector('#favorite-current').onclick=()=>{
-  favoriteLine.value=currentLine.number;fillFavoriteRoutes();favoriteRoute.value=currentLine.routes.indexOf(currentRoute);fillFavoriteStations();favoriteOrigin.value=names[selected];
+  favoriteLine.value=currentLine.number;fillFavoriteStations();favoriteOrigin.value=names[selected];
   if(live.destination!==null)favoriteDestination.value=names[live.destination];
   if(window.refreshCustomSelects)window.refreshCustomSelects();
   if(window.refreshFavoriteSearches)window.refreshFavoriteSearches();
 };
 favoriteForm.onsubmit=e=>{
   e.preventDefault();
-  const f={line:Number(favoriteLine.value),route:Number(favoriteRoute.value),origin:favoriteOrigin.value,destination:favoriteDestination.value,memo:memoText(favoriteMemo.value.trim())};
+  const f={line:Number(favoriteLine.value),origin:favoriteOrigin.value,destination:favoriteDestination.value,memo:memoText(favoriteMemo.value.trim())};
+  f.route=favoriteRouteIndex(f.line,f.origin,f.destination);
   if(!f.origin||!f.destination){favoriteMessage.textContent='출발역과 도착역을 검색해서 선택해주세요.';return}
+  if(f.origin!==f.destination&&f.route<0){favoriteMessage.textContent='두 역은 서로 다른 지선에 있어 환승이 필요해요. 환승역을 기준으로 나누어 저장해주세요.';return}
   if(!validFavorite(f)){favoriteMessage.textContent='출발역과 도착역을 다르게 선택해주세요.';return}
-  if(favorites.some(v=>v.line===f.line&&v.route===f.route&&v.origin===f.origin&&v.destination===f.destination)){favoriteMessage.textContent='이미 저장한 즐겨찾기예요.';return}
+  if(favorites.some(v=>v.line===f.line&&v.origin===f.origin&&v.destination===f.destination)){favoriteMessage.textContent='이미 저장한 즐겨찾기예요.';return}
   if(storeFavorites([...favorites,f])){favoriteMessage.textContent='이 브라우저에 저장했어요.';document.querySelector('#favorite-editor').open=false}
 };
 renderFavorites();
