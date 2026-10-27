@@ -8,7 +8,13 @@ function setup(blocked=false){
  const ctx={window:{},LINES:{2:{number:2,name:'2호선',color:'green',routes:[route]}},currentLine:{number:2,routes:[route]},currentRoute:route,names:route.names,selected:0,live:{destination:2},localStorage:{getItem:()=>saved,setItem(k,v){if(blocked)throw Error('blocked');saved=v}},document:{querySelector:el,createElement:element},changeLine(...args){opened=args},chooseDestination(i){chosen=i},console};
  vm.createContext(ctx);vm.runInContext(fs.readFileSync('favorites.js','utf8'),ctx);return {ctx,el};
 }
-let {ctx,el}=setup();assert.equal(el('#favorite-toggle').hidden,true,'no toggle without favorites');el('#favorite-current').onclick();el('#favorite-memo').value='연습실에서 집으로 2호선';el('#favorite-form').onsubmit({preventDefault(){}});
+let {ctx,el}=setup();assert.equal(el('#favorite-toggle').hidden,true,'no toggle without favorites');
+assert.equal(el('#favorite-origin').value,'','origin starts empty');assert.equal(el('#favorite-destination').value,'','destination starts empty');
+el('#favorite-form').onsubmit({preventDefault(){}});assert.equal(saved,null,'empty journey cannot be saved');
+assert.match(el('#favorite-message').textContent,/검색해서 선택/);
+el('#favorite-current').onclick();assert.equal(el('#favorite-origin').value,'강남','explicit import fills origin');
+el('#favorite-route').onchange();assert.equal(el('#favorite-origin').value,'','changing route clears origin');assert.equal(el('#favorite-destination').value,'','changing route clears destination');
+el('#favorite-current').onclick();el('#favorite-memo').value='연습실에서 집으로 2호선';el('#favorite-form').onsubmit({preventDefault(){}});
 assert.equal(JSON.parse(saved)[0].memo,'연습실에서 집으로 2호선','memo persisted');
 assert.equal(vm.runInContext("memoText('가'.repeat(21)).length",ctx),20,'memo limited to 20 characters');
 assert.equal(JSON.parse(saved)[0].destination,'서초');assert.equal(el('#favorite-list').children.length,1);

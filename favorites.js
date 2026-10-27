@@ -31,8 +31,7 @@ function storeFavorites(next){
 function favoriteOption(value,label){const option=document.createElement('option');option.value=value;option.textContent=label;return option}
 function fillFavoriteStations(){
   const route=LINES[favoriteLine.value].routes[Number(favoriteRoute.value)];
-  [favoriteOrigin,favoriteDestination].forEach(select=>{select.replaceChildren();route.names.forEach(n=>select.append(favoriteOption(n,n==='서울'?'서울역':n+'역')))});
-  favoriteDestination.selectedIndex=Math.min(1,route.names.length-1);
+  [favoriteOrigin,favoriteDestination].forEach(select=>{select.replaceChildren();route.names.forEach(n=>select.append(favoriteOption(n,n==='서울'?'서울역':n+'역')));select.selectedIndex=-1;select.value=''});
   if(window.refreshCustomSelects)window.refreshCustomSelects();
   if(window.refreshFavoriteSearches)window.refreshFavoriteSearches();
 }
@@ -75,6 +74,7 @@ document.querySelector('#favorite-current').onclick=()=>{
 favoriteForm.onsubmit=e=>{
   e.preventDefault();
   const f={line:Number(favoriteLine.value),route:Number(favoriteRoute.value),origin:favoriteOrigin.value,destination:favoriteDestination.value,memo:memoText(favoriteMemo.value.trim())};
+  if(!f.origin||!f.destination){favoriteMessage.textContent='출발역과 도착역을 검색해서 선택해주세요.';return}
   if(!validFavorite(f)){favoriteMessage.textContent='출발역과 도착역을 다르게 선택해주세요.';return}
   if(favorites.some(v=>v.line===f.line&&v.route===f.route&&v.origin===f.origin&&v.destination===f.destination)){favoriteMessage.textContent='이미 저장한 즐겨찾기예요.';return}
   if(storeFavorites([...favorites,f])){favoriteMessage.textContent='이 브라우저에 저장했어요.';document.querySelector('#favorite-editor').open=false}
