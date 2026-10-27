@@ -60,7 +60,7 @@ function renderFavorites(){
     remove.type='button';remove.className='favorite-remove';remove.textContent='×';remove.setAttribute('aria-label',f.origin+' → '+f.destination+' 즐겨찾기 삭제');
     remove.onclick=()=>{if(storeFavorites(favorites.filter((_,i)=>i!==index)))favoriteMessage.textContent='즐겨찾기를 삭제했어요.'};
     const edit=document.createElement('button'),editor=document.createElement('form'),label=document.createElement('label'),input=document.createElement('input'),counter=document.createElement('span'),actions=document.createElement('div'),save=document.createElement('button'),cancel=document.createElement('button');
-    edit.type='button';edit.className='favorite-edit';edit.textContent='메모 수정';edit.setAttribute('aria-label',f.origin+' → '+f.destination+' 메모 수정');edit.setAttribute('aria-expanded','false');
+    edit.type='button';edit.className='favorite-edit';edit.textContent='메모\n수정';edit.setAttribute('aria-label',f.origin+' → '+f.destination+' 메모 수정');edit.setAttribute('aria-expanded','false');
     editor.className='favorite-inline-editor';editor.id='favorite-memo-editor-'+index;editor.hidden=true;edit.setAttribute('aria-controls',editor.id);
     input.type='text';input.id='favorite-memo-edit-'+index;input.maxLength=20;input.placeholder='ex) 출근길 2호선';input.autocomplete='off';input.value=memoText(f.memo);
     label.htmlFor=input.id;label.textContent='메모';counter.className='favorite-inline-count';counter.textContent=Array.from(input.value).length+'/20';counter.setAttribute('aria-live','polite');
