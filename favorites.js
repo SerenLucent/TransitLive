@@ -59,7 +59,20 @@ function renderFavorites(){
     open.onclick=()=>openFavorite(f);
     remove.type='button';remove.className='favorite-remove';remove.textContent='×';remove.setAttribute('aria-label',f.origin+' → '+f.destination+' 즐겨찾기 삭제');
     remove.onclick=()=>{if(storeFavorites(favorites.filter((_,i)=>i!==index)))favoriteMessage.textContent='즐겨찾기를 삭제했어요.'};
-    item.append(open);item.append(remove);list.append(item);
+    const edit=document.createElement('button'),editor=document.createElement('form'),label=document.createElement('label'),input=document.createElement('input'),counter=document.createElement('span'),actions=document.createElement('div'),save=document.createElement('button'),cancel=document.createElement('button');
+    edit.type='button';edit.className='favorite-edit';edit.textContent='메모 수정';edit.setAttribute('aria-label',f.origin+' → '+f.destination+' 메모 수정');edit.setAttribute('aria-expanded','false');
+    editor.className='favorite-inline-editor';editor.id='favorite-memo-editor-'+index;editor.hidden=true;edit.setAttribute('aria-controls',editor.id);
+    input.type='text';input.id='favorite-memo-edit-'+index;input.maxLength=20;input.placeholder='ex) 출근길 2호선';input.autocomplete='off';input.value=memoText(f.memo);
+    label.htmlFor=input.id;label.textContent='메모';counter.className='favorite-inline-count';counter.textContent=Array.from(input.value).length+'/20';counter.setAttribute('aria-live','polite');
+    input.oninput=()=>{counter.textContent=Array.from(input.value).length+'/20'};
+    actions.className='favorite-inline-actions';save.type='submit';save.textContent='저장';cancel.type='button';cancel.textContent='취소';actions.append(save);actions.append(cancel);
+    editor.append(label);editor.append(counter);editor.append(input);editor.append(actions);
+    const closeEditor=()=>{editor.hidden=true;edit.setAttribute('aria-expanded','false');edit.focus()};
+    edit.onclick=()=>{if(!editor.hidden){closeEditor();return}input.value=memoText(favorites[index].memo);input.oninput();editor.hidden=false;edit.setAttribute('aria-expanded','true');input.focus()};
+    cancel.onclick=closeEditor;
+    editor.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeEditor()}};
+    editor.onsubmit=e=>{e.preventDefault();const memo=memoText(input.value.trim());if(storeFavorites(favorites.map((v,i)=>i===index?{...v,memo}:v))){favoriteMessage.textContent=memo?'메모를 수정했어요.':'메모를 지웠어요.';document.querySelector('#favorite-list').children[index].querySelector('.favorite-edit').focus()}};
+    item.append(open);item.append(remove);item.append(edit);item.append(editor);list.append(item);
   });
 }
 Object.values(LINES).forEach(l=>favoriteLine.append(favoriteOption(l.number,l.name)));

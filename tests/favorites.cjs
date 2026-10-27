@@ -2,7 +2,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 let saved=null,opened=null,chosen=null;
 function setup(blocked=false){
  const elements=new Map();
- function element(){return {value:'',children:[],style:{setProperty(){}},append(e){this.children.push(e);if(!this.value)this.value=String(e.value??'')},replaceChildren(){this.children=[];this.value=''},setAttribute(){},scrollIntoView(){this.scrolled=true}}}
+ function element(){return {value:'',children:[],style:{setProperty(){}},append(e){this.children.push(e);if(!this.value)this.value=String(e.value??'')},replaceChildren(){this.children=[];this.value=''},setAttribute(){},focus(){this.focused=true},querySelector(selector){return this.children.find(e=>e.className===selector.slice(1))},scrollIntoView(){this.scrolled=true}}}
  const el=k=>{if(!elements.has(k))elements.set(k,element());return elements.get(k)};
  const route={name:'본선',names:['강남','교대','서초']};
  const ctx={window:{},LINES:{2:{number:2,name:'2호선',color:'green',routes:[route]}},currentLine:{number:2,routes:[route]},currentRoute:route,names:route.names,selected:0,live:{destination:2},localStorage:{getItem:()=>saved,setItem(k,v){if(blocked)throw Error('blocked');saved=v}},document:{querySelector:el,createElement:element},changeLine(...args){opened=args},chooseDestination(i){chosen=i},console};
@@ -26,6 +26,13 @@ el('#favorite-form').onsubmit({preventDefault(){}});assert.equal(JSON.parse(save
 assert.equal(el('#favorite-list').children[0].children[0].children[1].textContent,'연습실에서 집으로 2호선','memo restored and rendered');
 assert.equal(el('#favorite-list').hidden,true,'reload starts collapsed');el('#favorite-toggle').onclick();
 el('#favorite-list').children[0].children[0].onclick();assert.deepEqual(opened,[2,0,'강남']);assert.equal(chosen,2,'destination direction restored');assert(el('#station-panel').scrolled);
+let item=el('#favorite-list').children[0],edit=item.children[2],editor=item.children[3];
+edit.onclick();assert.equal(editor.hidden,false);assert.equal(editor.children[2].value,'연습실에서 집으로 2호선','editor loads existing memo');
+editor.children[2].value='취소할 메모';editor.children[3].children[1].onclick();assert.equal(editor.hidden,true);assert.equal(JSON.parse(saved)[0].memo,'연습실에서 집으로 2호선','cancel preserves stored memo');
+edit.onclick();editor.children[2].value='퇴근길';editor.onsubmit({preventDefault(){}});
+assert.equal(JSON.parse(saved)[0].memo,'퇴근길','edited memo persisted');assert.equal(JSON.parse(saved)[0].origin,'강남','editing does not change journey');assert.equal(JSON.parse(saved).length,1,'editing never creates duplicate favorite');
+({ctx,el}=setup());assert.equal(el('#favorite-list').children[0].children[0].children[1].textContent,'퇴근길','edited memo restored after reload');
+item=el('#favorite-list').children[0];item.children[2].onclick();item.children[3].children[2].value='';item.children[3].onsubmit({preventDefault(){}});assert.equal(JSON.parse(saved)[0].memo,'','memo can be cleared');
 el('#favorite-list').children[0].children[1].onclick();assert.equal(JSON.parse(saved).length,0,'delete persisted');
 assert.equal(el('#favorite-toggle').hidden,true,'last deletion hides toggle');assert.equal(el('#favorite-list').hidden,true);
 ({ctx,el}=setup(true));el('#favorite-current').onclick();el('#favorite-form').onsubmit({preventDefault(){}});assert.match(el('#favorite-message').textContent,/저장 공간/);assert.equal(el('#favorite-list').children.length,0,'failed storage does not claim saved');
