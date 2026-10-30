@@ -139,6 +139,7 @@ function stoppingArrivals(items){
       const origin=positionStation(position),status=String(position.trainSttus);
       if(origin===names[selected]){
         if(status==='2')return [];
+        if(status==='3')return [{...row,positionStatus:status,positionDistance:0,arvlCd:'3',arvlMsg2:'전역 출발',arvlMsg3:origin}];
         if(['0','1'].includes(status))return [{...row,positionStatus:status,positionDistance:0,arvlCd:status==='1'?'1':'0',arvlMsg2:status==='1'?'도착 · 정차 중':'역 진입',arvlMsg3:origin}];
       }else if(!currentRoute.loop){
         const terminal=terminalInfo(position.statnTnm).name;
@@ -191,10 +192,10 @@ function positionArrivalRows(items,direction){
     const distance=path?path.indexOf(names[selected]):-1;
     if(distance<0)continue;
     const status=String(position.trainSttus);
-    if(distance===0&&!['0','1'].includes(status))continue;
-    const code=distance===0?(status==='1'?'1':'0'):'99';
+    if(distance===0&&!['0','1','3'].includes(status))continue;
+    const code=distance===0?(status==='1'?'1':status==='3'?'3':'0'):'99';
     rows.push({updnLine:direction,btrainNo:position.trainNo,bstatnNm:position.statnTnm,arvlCd:code,
-      arvlMsg2:distance===0?(status==='1'?'도착 · 정차 중':'역 진입'):distance+'개 역 전',
+      arvlMsg2:distance===0?(status==='1'?'도착 · 정차 중':status==='3'?'전역 출발':'역 진입'):distance+'개 역 전',
       arvlMsg3:origin,positionDistance:distance,positionStatus:status,positionBased:true,isExpress:stop.express,directAt:position.directAt});
     known.add(id);
   }
@@ -230,7 +231,10 @@ function platformTrackDistance(row,direction){
 function hideTerminatingMarker(row,direction){
   if(!endsAtSelectedStation(row))return false;
   const distance=platformTrackDistance(row,direction);
-  return distance!==null&&distance<=.5;
+  const stationDistance=platformDistance(row,direction);
+  const status=String(row.positionStatus??''),code=String(row.arvlCd??'');
+  // Previous-station departure stays visible in the gap; hide only on entry/arrival.
+  return (stationDistance===0&&(status?status==='0'||status==='1':code==='0'||code==='1'))||distance===0;
 }
 function onwardArrivals(rows){
   return rows.filter(row=>!endsAtSelectedStation(row));
@@ -276,7 +280,7 @@ function platformDiagram(rows,direction){
     const label=terminating?names[selected]+' 종착':through.indexOf(r)===0?'이번':'다음';
     return `<div class="platform-train ${left?'faces-left':''} train-slot-${i}${overlap?' same-station':''}${terminating?' terminating-train':''}" data-train="${esc(r.btrainNo||'')}" style="left:${10+slot*20}%"><span>${label}${r.isExpress?' · 급행':''}${distance>4?' · '+platformDistance(r,direction)+'역 전':''}</span><img src="assets/train-line2-short.png" alt="${label} 열차${left?' 왼쪽':' 오른쪽'} 방향"></div>`;
   }).join('');
-  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>{const terminal=s.name&&terminalStations.has(s.name);return `<div class="platform-station ${s.selected?'is-current':''}${terminal?' has-terminus':''}" ${terminal?`aria-label="${esc(s.name)} · 일부 열차 종착역"`:''} style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span>${s.selected?`<b class="selected-station-tag${terminal?' terminal-station-tag':''}">${terminal?'선택·종착':'선택역'}</b>`:terminal?'<b class="terminal-station-tag">종착</b>':''}</div>`}).join('')}${markers}</div>${endsHere?`<p class="platform-terminal-legend"><i aria-hidden="true"></i>${esc(names[selected])} 종착 열차는 전 역 출발부터 그림에서 숨겨요.</p>`:''}`;
+  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>{const terminal=s.name&&terminalStations.has(s.name);return `<div class="platform-station ${s.selected?'is-current':''}${terminal?' has-terminus':''}" ${terminal?`aria-label="${esc(s.name)} · 일부 열차 종착역"`:''} style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span>${s.selected?`<b class="selected-station-tag${terminal?' terminal-station-tag':''}">${terminal?'선택·종착':'선택역'}</b>`:terminal?'<b class="terminal-station-tag">종착</b>':''}</div>`}).join('')}${markers}</div>${endsHere?`<p class="platform-terminal-legend"><i aria-hidden="true"></i>${esc(names[selected])} 종착 열차는 이 역 진입부터 그림에서 숨겨요.</p>`:''}`;
 }
 window.renderLive=()=>{
   const name=names[selected],data=live.arrivals.get(arrivalKey()),old=dataOld(data);
