@@ -80,8 +80,8 @@ setImmediate(async()=>{
   assert.match(el('#detail').innerHTML,/3번째 열차/,'all remaining trains still available');
   vm.runInContext('live.expandedArrivals.add(arrivalKey()+":상행");window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/<details class="arrival-more"[^>]* open><summary>상행 열차 접기/,'expanded state survives clock and API rerenders');
-  assert.match(context.platformDiagram([], '상행'),/platform-station is-current" style="left:10%"/,'upbound selected station is on the left');
-  assert.match(context.platformDiagram([], '하행'),/platform-station is-current" style="left:90%"/,'downbound selected station is on the right');
+  assert.match(context.platformDiagram([], '상행'),/platform-station is-current"\s+style="left:10%"/,'upbound selected station is on the left');
+  assert.match(context.platformDiagram([], '하행'),/platform-station is-current"\s+style="left:90%"/,'downbound selected station is on the right');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'1'},'상행'),1,'stopped train stays on station');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.5,'departed train goes halfway toward selected station');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.5,'entering train is between station and preceding station');
@@ -96,6 +96,16 @@ setImmediate(async()=>{
   assert.equal(context.hideTerminatingMarker({...terminating,positionStatus:'1'},'상행'),false,'terminal image stays until previous station departure');
   assert.equal(context.hideTerminatingMarker(terminating,'상행'),true,'terminal image removed at previous station departure');
   assert.match(context.platformDiagram([{...terminating,positionStatus:'1'}],'상행'),/data-train="ending"/);
+  const terminalBeforeDeparture=context.platformDiagram([{...terminating,positionStatus:'1'},moving],'상행');
+  assert.match(terminalBeforeDeparture,/terminating-train/,'terminal train label has its own matching color');
+  assert.match(terminalBeforeDeparture,/>수색 종착<\/span>/,'train label names its actual terminus');
+  assert.match(terminalBeforeDeparture,/is-current has-terminus/,'selected station has a terminal marker');
+  assert.match(terminalBeforeDeparture,/선택·종착/);assert.match(terminalBeforeDeparture,/일부 열차 종착역/,'marker does not claim all trains terminate here');
+  assert.equal((terminalBeforeDeparture.match(/has-terminus/g)||[]).length,1,'only the actual terminal station is marked');
+  const terminalAfterDeparture=context.platformDiagram([terminating,moving],'상행');
+  assert.match(terminalAfterDeparture,/is-current has-terminus/,'terminal station stays marked after train image disappears');
+  assert.match(terminalAfterDeparture,/수색 종착 열차는 전 역 출발부터 그림에서 숨겨요/,'legend explains why a terminal train disappears');
+  assert.doesNotMatch(context.platformDiagram([moving],'상행'),/has-terminus|platform-terminal-legend/,'no terminal marker or notice without a terminating train');
   assert.doesNotMatch(context.platformDiagram([terminating,moving],'상행'),/data-train="ending"/);
   assert.match(context.platformDiagram([terminating,moving],'상행'),/data-train="moving"/,'hidden terminal image never consumes a visible train slot');
   assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:2},'상행'),false,'departing two stations away is not the final approach');

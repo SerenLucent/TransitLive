@@ -257,6 +257,8 @@ function platformNotes(r,direction,route){
 }
 function platformDiagram(rows,direction){
   const left=['상행','내선','순환'].includes(direction),sign=['내선','순환','하행'].includes(direction)?1:-1;
+  const terminalStations=new Set(rows.map(r=>terminalInfo(r.bstatnNm).name).filter(Boolean));
+  const endsHere=terminalStations.has(names[selected]);
   const stations=Array.from({length:5},(_,i)=>{
     const distance=left?i:4-i,offset=distance,index=selected-sign*distance;
     const valid=currentRoute.loop||index>=0&&index<names.length;
@@ -269,10 +271,11 @@ function platformDiagram(rows,direction){
     if(distance===null||distance<0)return '';
     const slot=left?Math.min(4,distance):4-Math.min(4,distance);
     const overlap=slots.includes(slot);slots.push(slot);
-    const label=endsAtSelectedStation(r)?'종착':through.indexOf(r)===0?'이번':'다음';
-    return `<div class="platform-train ${left?'faces-left':''} train-slot-${i}${overlap?' same-station':''}" data-train="${esc(r.btrainNo||'')}" style="left:${10+slot*20}%"><span>${label}${r.isExpress?' · 급행':''}${distance>4?' · '+platformDistance(r,direction)+'역 전':''}</span><img src="assets/train-line2-short.png" alt="${label} 열차${left?' 왼쪽':' 오른쪽'} 방향"></div>`;
+    const terminating=endsAtSelectedStation(r);
+    const label=terminating?names[selected]+' 종착':through.indexOf(r)===0?'이번':'다음';
+    return `<div class="platform-train ${left?'faces-left':''} train-slot-${i}${overlap?' same-station':''}${terminating?' terminating-train':''}" data-train="${esc(r.btrainNo||'')}" style="left:${10+slot*20}%"><span>${label}${r.isExpress?' · 급행':''}${distance>4?' · '+platformDistance(r,direction)+'역 전':''}</span><img src="assets/train-line2-short.png" alt="${label} 열차${left?' 왼쪽':' 오른쪽'} 방향"></div>`;
   }).join('');
-  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>`<div class="platform-station ${s.selected?'is-current':''}" style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span>${s.selected?'<b class="selected-station-tag">선택역</b>':''}</div>`).join('')}${markers}</div>`;
+  return `<div class="platform-diagram" aria-label="${left?'왼쪽':'오른쪽'}으로 운행하는 열차 위치"><div class="platform-rail"></div>${stations.map((s,i)=>{const terminal=s.name&&terminalStations.has(s.name);return `<div class="platform-station ${s.selected?'is-current':''}${terminal?' has-terminus':''}" ${terminal?`aria-label="${esc(s.name)} · 일부 열차 종착역"`:''} style="left:${10+i*20}%"><i></i><span>${esc(s.name||'—')}</span>${s.selected?`<b class="selected-station-tag${terminal?' terminal-station-tag':''}">${terminal?'선택·종착':'선택역'}</b>`:terminal?'<b class="terminal-station-tag">종착</b>':''}</div>`}).join('')}${markers}</div>${endsHere?`<p class="platform-terminal-legend"><i aria-hidden="true"></i>${esc(names[selected])} 종착 열차는 전 역 출발부터 그림에서 숨겨요.</p>`:''}`;
 }
 window.renderLive=()=>{
   const name=names[selected],data=live.arrivals.get(arrivalKey()),old=dataOld(data);
