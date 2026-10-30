@@ -215,17 +215,24 @@ function platformDistance(r,direction){
 function endsAtSelectedStation(row){
   return terminalInfo(row.bstatnNm).name===names[selected];
 }
-// This is a schematic half-station position, not an invented GPS coordinate.
+// Schematic progress from reported states; these fractions are not GPS positions.
 function platformTrackDistance(row,direction){
   const distance=platformDistance(row,direction),status=String(row.positionStatus??''),code=String(row.arvlCd??'');
   if(distance===null)return null;
   if(status==='1')return distance;
-  if(status==='2')return Math.max(0,distance-.5);
-  if(status==='0'||status==='3')return distance+.5;
+  if(status==='2')return Math.max(0,distance-.25);
+  if(status==='0')return distance+.25;
+  if(status==='3')return distance+.75;
   if(code==='1')return 0;
-  if(code==='0'||code==='3')return .5;
-  if(code==='4'||code==='5')return 1.5;
-  if(/출발|이동\s*중/.test(String(row.arvlMsg2||'')))return Math.max(0,distance-.5);
+  if(code==='0')return .25;
+  if(code==='3')return .75;
+  if(code==='4')return 1.25;
+  if(code==='5')return 1.75;
+  if(code==='6')return 2.25;
+  const raw=String(row.arvlMsg2||'');
+  if(/진입/.test(raw))return distance+.25;
+  if(/출발/.test(raw))return Math.max(0,distance-.25);
+  if(/이동\s*중/.test(raw))return Math.max(0,distance-.5);
   return distance;
 }
 function hideTerminatingMarker(row,direction){

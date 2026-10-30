@@ -83,15 +83,23 @@ setImmediate(async()=>{
   assert.match(context.platformDiagram([], '상행'),/platform-station is-current"\s+style="left:10%"/,'upbound selected station is on the left');
   assert.match(context.platformDiagram([], '하행'),/platform-station is-current"\s+style="left:90%"/,'downbound selected station is on the right');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'1'},'상행'),1,'stopped train stays on station');
-  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.5,'departed train goes halfway toward selected station');
-  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.5,'entering train is between station and preceding station');
-  assert.equal(context.platformTrackDistance({arvlCd:'3'},'상행'),.5,'previous-station departure needs no position feed');
-  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1.5,'two-stations-away departure moves into the correct gap');
-  assert.equal(context.platformTrackDistance({arvlCd:'0'},'하행'),.5,'entering selected station is still in the approaching gap');
+  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.75,'departed train goes halfway toward selected station');
+  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.25,'entering train is between station and preceding station');
+  assert.equal(context.platformTrackDistance({arvlCd:'3'},'상행'),.75,'previous-station departure needs no position feed');
+  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1.75,'two-stations-away departure moves into the correct gap');
+  assert.equal(context.platformTrackDistance({arvlCd:'0'},'하행'),.25,'entering selected station is still in the approaching gap');
   assert.equal(context.platformTrackDistance({arvlCd:'1'},'하행'),0,'arrived train sits at selected station');
   const moving={btrainNo:'moving',bstatnNm:'문산',positionDistance:1,positionStatus:'2'};
-  assert.match(context.platformDiagram([moving],'상행'),/data-train="moving" style="left:20%"/,'upbound movement is between selected and previous station');
-  assert.match(context.platformDiagram([moving],'하행'),/data-train="moving" style="left:80%"/,'downbound movement mirrors the same gap');
+  for(const direction of ['상행','하행','내선','외선']){
+    assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},direction),.75,'departure is one quarter along the next segment');
+    assert.equal(context.platformTrackDistance({positionDistance:1,arvlMsg2:'이동 중'},direction),.5,'explicit movement is midway');
+    assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'0'},direction),.25,'entry is three quarters along the approaching segment');
+    assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'1'},direction),0,'arrival is exactly on station');
+    assert.equal(context.platformTrackDistance({arvlCd:'4'},direction),1.25,'previous station entry remains behind that station');
+    assert.equal(context.platformTrackDistance({arvlCd:'6'},direction),2.25,'second previous station entry remains behind that station');
+  }
+  assert.match(context.platformDiagram([moving],'상행'),/data-train="moving" style="left:25%"/,'upbound movement is between selected and previous station');
+  assert.match(context.platformDiagram([moving],'하행'),/data-train="moving" style="left:75%"/,'downbound movement mirrors the same gap');
   const terminating={...moving,btrainNo:'ending',bstatnNm:'수색'};
   for(const direction of ['상행','하행']){
     assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:0,positionStatus:'0'},direction),true,'terminating train hides when entering selected station');
@@ -120,7 +128,7 @@ setImmediate(async()=>{
   context.positionFixture.items=[pos('through-depart','수색','문산','0',{trainSttus:'3'})];
   const approachingFromPrevious=context.positionArrivalRows([],'상행');
   assert.equal(approachingFromPrevious.length,1,'previous-station departure status remains approaching even when position feed names the target station');
-  assert.match(context.platformDiagram(approachingFromPrevious,'상행'),/data-train="through-depart" style="left:20%"/,'continuing train remains in final gap');
+  assert.match(context.platformDiagram(approachingFromPrevious,'상행'),/data-train="through-depart" style="left:25%"/,'continuing train remains in final gap');
   assert.equal(context.hideTerminatingMarker(approachingFromPrevious[0],'상행'),false);
   const freshDeparture=context.stoppingArrivals([{btrainNo:'through-depart',bstatnNm:'문산',arvlCd:'2'}]);
   assert.equal(context.upcomingArrivals(freshDeparture).length,1,'fresh previous-station departure overrides obsolete departure message');
