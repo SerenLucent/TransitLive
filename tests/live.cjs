@@ -82,6 +82,34 @@ setImmediate(async()=>{
   assert.match(el('#detail').innerHTML,/<details class="arrival-more"[^>]* open><summary>상행 열차 접기/,'expanded state survives clock and API rerenders');
   assert.match(context.platformDiagram([], '상행'),/platform-station is-current" style="left:10%"/,'upbound selected station is on the left');
   assert.match(context.platformDiagram([], '하행'),/platform-station is-current" style="left:90%"/,'downbound selected station is on the right');
+  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'1'},'상행'),1,'stopped train stays on station');
+  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.5,'departed train goes halfway toward selected station');
+  assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.5,'entering train is between station and preceding station');
+  assert.equal(context.platformTrackDistance({arvlCd:'3'},'상행'),.5,'previous-station departure needs no position feed');
+  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1.5,'two-stations-away departure moves into the correct gap');
+  assert.equal(context.platformTrackDistance({arvlCd:'0'},'하행'),.5,'entering selected station is still in the approaching gap');
+  assert.equal(context.platformTrackDistance({arvlCd:'1'},'하행'),0,'arrived train sits at selected station');
+  const moving={btrainNo:'moving',bstatnNm:'문산',positionDistance:1,positionStatus:'2'};
+  assert.match(context.platformDiagram([moving],'상행'),/data-train="moving" style="left:20%"/,'upbound movement is between selected and previous station');
+  assert.match(context.platformDiagram([moving],'하행'),/data-train="moving" style="left:80%"/,'downbound movement mirrors the same gap');
+  const terminating={...moving,btrainNo:'ending',bstatnNm:'수색'};
+  assert.equal(context.hideTerminatingMarker({...terminating,positionStatus:'1'},'상행'),false,'terminal image stays until previous station departure');
+  assert.equal(context.hideTerminatingMarker(terminating,'상행'),true,'terminal image removed at previous station departure');
+  assert.match(context.platformDiagram([{...terminating,positionStatus:'1'}],'상행'),/data-train="ending"/);
+  assert.doesNotMatch(context.platformDiagram([terminating,moving],'상행'),/data-train="ending"/);
+  assert.match(context.platformDiagram([terminating,moving],'상행'),/data-train="moving"/,'hidden terminal image never consumes a visible train slot');
+  assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:2},'상행'),false,'departing two stations away is not the final approach');
+  assert.equal(context.hideTerminatingMarker({...terminating,arvlCd:'3',positionStatus:undefined,positionDistance:undefined},'상행'),true,'arrival status alone hides a terminal train after previous station departure');
+  const savedPositionItems=context.positionFixture.items;
+  context.positionFixture.items=[pos('terminaldepart','디지털미디어시티','수색','0',{trainSttus:'2'})];
+  const olderArrival={btrainNo:'terminaldepart',bstatnNm:'수색',updnLine:'상행',arvlCd:'4',ordkey:'01001',arvlMsg2:'전역 진입',recptnDt:new Date(Date.now()+9*3600000-20000).toISOString().slice(0,19).replace('T',' ')};
+  const departedTerminal=context.stoppingArrivals([olderArrival])[0];
+  assert.equal(departedTerminal.positionStatus,'2','fresh departure status is carried into the detailed diagram');
+  assert.equal(context.hideTerminatingMarker(departedTerminal,'상행'),true,'new departure hides terminal despite older arrival status');
+  context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-40000).toISOString().slice(0,19).replace('T',' ');
+  const newerArrival=context.stoppingArrivals([{...olderArrival,recptnDt:received}])[0];
+  assert.equal(context.hideTerminatingMarker(newerArrival,'상행'),false,'older position must not override newer arrival status');
+  context.positionFixture.items=savedPositionItems;
   const boardPositions=context.positionFixture.items.slice();
   for(let i=0;i<8;i++)context.positionFixture.items.push(pos('more'+i,'홍대입구','문산'));
   vm.runInContext('window.renderLive()',context);
@@ -92,13 +120,40 @@ setImmediate(async()=>{
   context.positionFixture.items=[pos('platform','수색','수색','0'),pos('departed','수색','문산','0',{trainSttus:'2'})];
   const platform=context.positionArrivalRows([],'상행');assert.equal(platform.length,1);assert.equal(platform[0].arvlCd,'1','arrived terminal train remains until departure');
   vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
-  assert.match(el('#detail').innerHTML,/이 역 종착/);assert.match(el('#detail').innerHTML,/위치정보 기준/);
+  assert.match(el('#detail').innerHTML,/이 역 종착 열차를 제외/);assert.doesNotMatch(el('#detail').innerHTML,/data-train="platform"/,'selected-station terminal train no longer drawn at platform');
   const platformReport={btrainNo:'platform',bstatnNm:'수색',updnLine:'상행',arvlCd:'1'};
   assert.equal(context.stoppingArrivals([platformReport])[0].arvlCd,'1','stopped train stays current');
   context.positionFixture.items[0].trainSttus='2';
   assert.equal(context.stoppingArrivals([platformReport]).length,0,'new departure position overrides older arrived message immediately');
   context.positionFixture.stale=true;assert.equal(context.positionArrivalRows([],'상행').length,0,'stale position snapshot never supplements arrivals');
   vm.runInContext('live.positions=null;live.destination=null',context);
+  context.terminalArrivalFixture=[
+    {btrainNo:'ending0',bstatnNm:'수색',updnLine:'상행',arvlCd:'1',ordkey:'01000',arvlMsg2:'수색 도착'},
+    {btrainNo:'ending1',bstatnNm:'수색',updnLine:'상행',arvlCd:'3',ordkey:'01001',arvlMsg2:'전역 출발',barvlDt:'60'},
+    {btrainNo:'ending2',bstatnNm:'수색',updnLine:'상행',arvlCd:'5',ordkey:'01002',arvlMsg2:'전전역 출발',barvlDt:'120'},
+    {btrainNo:'through1',bstatnNm:'문산',updnLine:'상행',arvlCd:'99',ordkey:'01003',arvlMsg2:'8분 후',positionDistance:3},
+    {btrainNo:'ending3',bstatnNm:'수색',updnLine:'상행',arvlCd:'99',ordkey:'01004',arvlMsg2:'9분 후',positionDistance:4},
+    {btrainNo:'through2',bstatnNm:'문산',updnLine:'상행',arvlCd:'99',ordkey:'01005',arvlMsg2:'12분 후',positionDistance:5}
+  ];
+  vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:terminalArrivalFixture});window.renderLive()',context);
+  assert.match(el('#detail').innerHTML,/platform-current-label">이번 열차 <small>#through1/,'skip every terminal train before current continuing train');
+  assert.match(el('#detail').innerHTML,/platform-next-label">다음 열차 <small>#through2/,'skip intervening terminal trains before next continuing train');
+  assert.match(el('#detail').innerHTML,/8분 후/);assert.match(el('#detail').innerHTML,/12분 후/);
+  assert.doesNotMatch(el('#detail').innerHTML,/9분 후|60초|120초/,'terminal ETA is never borrowed by another train');
+  assert.doesNotMatch(el('#detail').innerHTML,/data-train="ending0"|data-train="ending1"/);
+  assert.match(el('#detail').innerHTML,/data-train="ending2"/,'earlier terminal train may remain on diagram until previous station departure');
+  assert.match(el('#detail').innerHTML,/이번·다음 열차의 도착시간에서 제외/);
+  const continuingWithoutTime={...context.terminalArrivalFixture[3],arvlMsg2:'3개 역 전'};
+  assert.doesNotMatch(context.platformMessage(continuingWithoutTime,'상행').main,/분 후/,'continuing train with no ETA never borrows a terminal ETA');
+  if(process.env.TRANSIT_PLATFORM_PREVIEW){
+    context.terminalArrivalFixture.push(
+      {btrainNo:'through3',bstatnNm:'문산',updnLine:'상행',arvlCd:'99',ordkey:'01006',arvlMsg2:'15분 후',positionDistance:6},
+      {btrainNo:'down1',bstatnNm:'상봉',updnLine:'하행',arvlCd:'3',ordkey:'01001',arvlMsg2:'전역 출발',barvlDt:'90'},
+      {btrainNo:'down2',bstatnNm:'상봉',updnLine:'하행',arvlCd:'99',ordkey:'01002',arvlMsg2:'4분 후',positionDistance:2,positionStatus:'1'}
+    );
+    vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:terminalArrivalFixture});window.renderLive()',context);
+    fs.writeFileSync(process.env.TRANSIT_PLATFORM_PREVIEW,`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>상세 열차 위치 검증 · 샘플</title><style>${fs.readFileSync('style.css','utf8')}</style><main style="max-width:420px;padding:18px 10px"><p>샘플 데이터 · 서울시 API 호출 없음</p><aside id="station-panel"><h2>수색역 도착 안내</h2><p>종착 열차 제외 · 이동 중 열차는 역 사이 표시</p><div id="detail">${el('#detail').innerHTML}</div></aside></main></html>`);
+  }
   context.names=originalNames;
   context.names=['문산','운정','능곡','가좌','신촌','서울'];context.selected=0;context.currentRoute={loop:false};
   vm.runInContext('live.destination=5',context);
