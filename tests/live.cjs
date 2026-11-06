@@ -71,7 +71,8 @@ setImmediate(async()=>{
   const corrected=context.stoppingArrivals([{btrainNo:'5106',bstatnNm:'문산',updnLine:'상행',ordkey:'01018문산0',arvlCd:'99',arvlMsg2:'18개 역 전'}])[0];
   assert.equal(corrected.arvlMsg2,'2개 역 전','newer nearby position corrects an older distant message for same train');
   context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-180000).toISOString().slice(0,19).replace('T',' ');
-  assert(context.positionArrivalRows([],'상행').some(r=>r.btrainNo==='5106'),'three-minute observation still matches the visible map train');
+  assert(!context.positionArrivalRows([],'상행').some(r=>r.btrainNo==='5106'),'three-minute observation is no longer treated as current');
+  context.positionFixture.items[0].recptnDt=received;
   context.positionFixture.items.push(pos('extra','홍대입구','문산'));
   vm.runInContext('live.destination=null;live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/이번 열차[\s\S]*?5106/,'visible nearest stopping train is not treated as absent');
@@ -86,7 +87,7 @@ setImmediate(async()=>{
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.75,'departed train goes halfway toward selected station');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.25,'entering train is between station and preceding station');
   assert.equal(context.platformTrackDistance({arvlCd:'3'},'상행'),.75,'previous-station departure needs no position feed');
-  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1.75,'two-stations-away departure moves into the correct gap');
+  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1,'previous-station arrival stays exactly on previous station');
   assert.equal(context.platformTrackDistance({arvlCd:'0'},'하행'),.25,'entering selected station is still in the approaching gap');
   assert.equal(context.platformTrackDistance({arvlCd:'1'},'하행'),0,'arrived train sits at selected station');
   const moving={btrainNo:'moving',bstatnNm:'문산',positionDistance:1,positionStatus:'2'};
@@ -96,7 +97,7 @@ setImmediate(async()=>{
     assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'0'},direction),.25,'entry is three quarters along the approaching segment');
     assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'1'},direction),0,'arrival is exactly on station');
     assert.equal(context.platformTrackDistance({arvlCd:'4'},direction),1.25,'previous station entry remains behind that station');
-    assert.equal(context.platformTrackDistance({arvlCd:'6'},direction),2.25,'second previous station entry remains behind that station');
+    assert.equal(context.platformTrackDistance({arvlCd:'99',arvlMsg2:'2개 역 전 진입'},direction),2.25,'explicit second previous station entry remains behind that station');
   }
   assert.match(context.platformDiagram([moving],'상행'),/data-train="moving" style="left:25%"/,'upbound movement is between selected and previous station');
   assert.match(context.platformDiagram([moving],'하행'),/data-train="moving" style="left:75%"/,'downbound movement mirrors the same gap');
@@ -132,9 +133,9 @@ setImmediate(async()=>{
   assert.match(nearbyDiagram,/data-train="5045"/,'a train genuinely at four stations away stays visible');
   context.positionFixture.items=[pos('5045','홍대입구','문산')];
   const conflicting=context.stoppingArrivals([{btrainNo:'5045',bstatnNm:'문산',updnLine:'상행',ordkey:'01001',arvlCd:'3',arvlMsg2:'전역 출발',barvlDt:'90',recptnDt:new Date(Date.now()+9*3600000+1000).toISOString().slice(0,19).replace('T',' ')}])[0];
-  assert.equal(context.platformDistance(conflicting,'상행'),3,'detail uses same position snapshot as whole map even when arrival message is newer');
-  assert.equal(conflicting.positionStationName,'홍대입구');
-  assert.doesNotMatch(context.platformMessage(conflicting,'상행').main,/90초|1분/,'ETA from another observation is not attached to position-based status');
+  assert.equal(context.platformDistance(conflicting,'상행'),1,'newer arrival position overrides older whole-map position');
+  assert.equal(conflicting.positionStationName,'디지털미디어시티');
+  assert.match(context.platformMessage(conflicting,'상행').main,/1분/,'latest arrival keeps its own ETA with its own status');
   for(const status of ['0','1','2','3'])assert.equal(context.platformTrackDistance({positionDistance:2,positionStatus:status},'상행'),2-context.positionStateOffset(status),'main map and detail share state offsets');
   context.positionFixture.items=savedPositionItems;
   context.positionFixture.items=[pos('through-depart','수색','문산','0',{trainSttus:'3'})];

@@ -14,7 +14,7 @@ function expressPattern(line,row){
 }
 function expressStopInfo(line,row,station){
   const data=EXPRESS_DATA[line],pattern=expressPattern(line,row);
-  const express=!!pattern||/급행|특급/.test(row.trainLineNm||'')||['1','2'].includes(String(row.directAt))||/^\d{5}.+[12]$/.test(row.ordkey||'');
+  const express=!!pattern||/급행|특급/.test(row.trainLineNm||'')||['1','7'].includes(String(row.directAt))||/^\d{5}.+[12]$/.test(row.ordkey||'');
   if(!express)return {express:false,stops:true,pattern:null};
   const terminal=normalizeStation(String(row.bstatnNm||row.statnTnm||'').replace(/행$/,''));
   if(terminal===station)return {express:true,stops:true,pattern};

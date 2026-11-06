@@ -8,6 +8,7 @@ assert.equal(ctx.expressStopInfo(63,{trainNo:'2512',statnTnm:'문산',directAt:'
 assert.equal(ctx.expressStopInfo(63,{trainNo:'5106',statnTnm:'문산',directAt:'0'},'수색').stops,true,'ordinary train at Gajwa can be shown');
 assert.equal(ctx.expressStopInfo(9,{directAt:'1'},'흑석').stops,false);assert.equal(ctx.expressStopInfo(9,{directAt:'1'},'노량진').stops,true);
 assert.equal(ctx.expressStopInfo(63,{trainNo:'9999',directAt:'1'},'수색').stops,null,'unknown pattern never assumed stopping');
+assert.equal(ctx.expressStopInfo(1,{trainNo:'unknown',directAt:'7'},'구로').stops,null,'documented special express flag 7 is not treated as an ordinary stopping train');
 assert.equal(ctx.expressStopInfo(63,{trainNo:'5708',statnTnm:'다른역',directAt:'1'},'수색').stops,null,'conflicting destination invalidates schedule match');
 vm.runInContext('expressDayOverride="holiday"',ctx);
 assert.equal(ctx.expressStopInfo(63,{trainNo:'5708',directAt:'1',statnTnm:'문산'},'가좌').stops,null,'weekday pattern is not reused on holidays');

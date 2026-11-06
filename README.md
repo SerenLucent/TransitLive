@@ -20,6 +20,6 @@
 
 `apps-script/Code.gs`를 Apps Script에 저장하고 기존 배포를 새 버전으로 업데이트합니다. 키는 스크립트 속성 `SEOUL_SUBWAY_API_KEY`에 저장하며 프런트엔드에 넣지 않습니다. 캐시는 호선·역별로 분리되어 10초 동안 공유됩니다. 서울시 승인에 따라 자체 하루 900회 차단은 해제했으며 비공개 호출량 집계는 유지합니다. 예약 트리거 없이 요청이 있을 때만 갱신합니다.
 
-검사: `node tests/layout.cjs`, `node tests/live.cjs`, `node tests/backend.cjs`.
+검사: `node tests/layout.cjs`, `node tests/live.cjs`, `node tests/backend.cjs`, `node tests/reconciliation.cjs`.
 
 서해선·경강선은 도착정보 전용입니다. 열차 위치 조회·아이콘 표시를 하지 않으며 화면에 별도 안내합니다.
