@@ -31,7 +31,7 @@ setImmediate(()=>{
  const resolved=ctx.stoppingArrivals([latest])[0];assert.equal(resolved.positionDistance,2);assert.equal(resolved.positionStationName,'능곡');assert.doesNotMatch(ctx.platformMessage(resolved,'하행').main,/4역/);
  const duplicated=ctx.upcomingArrivals([arrival('강매',-20,{btrainNo:'05045',arvlCd:'1'}),arrival('강매',-1,{arvlCd:'2'})]);
  assert.equal(duplicated.length,0,'newer departure removes an older duplicate arrival, including zero-padded train IDs');
- assert.equal(ctx.stoppingArrivals([arrival('곡산',-100)]).length,0,'old upstream arrivals never look fresh merely because fetch just completed');
+ const oldOnly=ctx.stoppingArrivals([arrival('곡산',-100,{btrainNo:'old-only',barvlDt:'60',arvlMsg2:'1분 후'})])[0];assert(oldOnly,'old upstream arrival is retained');assert(ctx.oldObservation(oldOnly));assert.match(ctx.platformMessage(oldOnly,'하행').main,/마지막 관측/);assert.doesNotMatch(ctx.platformMessage(oldOnly,'하행').main,/1분 후/,'old ETA is not presented as current');
  ctx.installArrivals(key,{updatedAt:Date.now()+3,items:[arrival('일산',-60)]});assert.equal(models()[0].row.statnNm,'능곡','out-of-order arrival row is ignored');
  assert.equal(vm.runInContext('live.arrivals.get("63:강매").items[0].arvlMsg3',ctx),'곡산');
  assert.equal(ctx.sameService(pos('곡산'),arrival('곡산',-5,{updnLine:'상행'})),false,'opposite direction never merges');
@@ -43,6 +43,24 @@ setImmediate(()=>{
  const equivalentTime=time(1);ctx.installPositions({updatedAt:Date.now()+5,items:[pos('강매',1,{recptnDt:equivalentTime,trainSttus:'3'})]});ctx.installArrivals(key,{updatedAt:Date.now()+5,items:[arrival('행신',1,{recptnDt:equivalentTime,arvlCd:'3',arvlMsg2:'전역 출발'})]});
  assert.equal(models().length,1,'target station plus previous-departure equals previous station plus departure, not a conflict');
  assert.equal(models()[0].from,ctx.names.indexOf('강매')-.75);
+ // Close approach: old broad position must never replace the newer station-specific state.
+ ctx.installPositions({updatedAt:Date.now()+6,items:[pos('일산',-180,{trainNo:'near-001'})]});
+ const closeTrain=arrival('행신',0,{btrainNo:'near-001'});
+ for(const [i,code,station,offset] of [[0,'5','행신',1],[1,'3','행신',.75],[2,'0','강매',.25],[3,'1','강매',0],[4,'2','강매',-.25]]){
+  const update={...closeTrain,arvlCd:code,arvlMsg3:station,recptnDt:time(i),arvlMsg2:({'5':'전역 도착','3':'전역 출발','0':'진입','1':'도착','2':'출발'})[code]};
+  ctx.installArrivals(key,{updatedAt:Date.now()+10+i,items:[update,arrival('곡산',-180,{btrainNo:'old-only',barvlDt:'90'})]});
+  const current=ctx.stoppingArrivals([update]);
+  if(code==='2')assert.equal(ctx.upcomingArrivals(current).length,0,'departure removes only departed train');
+  else{assert.equal(current.length,1);assert.equal(ctx.platformTrackDistance(current[0],'하행'),offset,'nearby approach state '+code);assert.equal(ctx.oldObservation(current[0]),false);}
+  const model=models().find(m=>m.row.trainNo==='near-001');assert(model);assert.equal(model.from,ctx.names.indexOf('강매')-offset,'map and detailed coordinate agree throughout approach');
+ }
+ ctx.window.renderLive();assert.match(el('#detail').innerHTML,/이전 관측 열차/);assert.match(el('#detail').innerHTML,/old-only/,'old train remains available in its own direction panel');assert.match(el('#detail').innerHTML,/현재 위치 확인 필요/);
+ ctx.installPositions({updatedAt:Date.now()+30,items:[]});
+ ctx.installArrivals(key,{updatedAt:Date.now()+30,items:[arrival('곡산',1,{btrainNo:'fresh-far'}),arrival('행신',-180,{btrainNo:'older-near',arvlCd:'5',arvlMsg2:'전역 도착'})]});
+ ctx.window.renderLive();assert.match(el('#detail').innerHTML,/확인된 열차/,'a potentially closer old observation prevents claiming a farther fresh train is definitely first');assert.match(el('#detail').innerHTML,/더 가까운 열차의 최신 위치를 확인 중/);assert.match(el('#detail').innerHTML,/older-near/);
+ assert(models().some(m=>m.row.trainNo==='older-near'),'old nearby train stays on full map');
+ assert(ctx.usableObservation({recptnDt:time(-180)}),'age alone does not discard operating-day observation');
+ assert.equal(ctx.usableObservation({recptnDt:time(-48*3600)}),false,'previous operating day is not mixed into current services');
  assert.equal(ctx.recentPosition({recptnDt:time(-91)}),false);assert.equal(ctx.recentPosition({recptnDt:time(30)}),false);assert.equal(ctx.observationTime({recptnDt:'2026-11-06T09:00:00+09:00'}),ctx.observationTime({recptnDt:'2026-11-06 09:00:00'}),'timezone suffix parsed once');
  for(const [code,station,status] of [['0','강매','0'],['1','강매','1'],['2','강매','2'],['3','행신','2'],['4','행신','0'],['5','행신','1']]){
   const row=arrival('',-2,{arvlCd:code,arvlMsg2:''}),location=ctx.arrivalLocation(row,'강매');assert.equal(location.statnNm,station,'arrival code '+code+' station');assert.equal(location.trainSttus,status);

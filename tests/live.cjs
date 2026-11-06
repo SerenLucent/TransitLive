@@ -71,7 +71,7 @@ setImmediate(async()=>{
   const corrected=context.stoppingArrivals([{btrainNo:'5106',bstatnNm:'문산',updnLine:'상행',ordkey:'01018문산0',arvlCd:'99',arvlMsg2:'18개 역 전'}])[0];
   assert.equal(corrected.arvlMsg2,'2개 역 전','newer nearby position corrects an older distant message for same train');
   context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-180000).toISOString().slice(0,19).replace('T',' ');
-  assert(!context.positionArrivalRows([],'상행').some(r=>r.btrainNo==='5106'),'three-minute observation is no longer treated as current');
+  const earlier=context.positionArrivalRows([],'상행').find(r=>r.btrainNo==='5106');assert(earlier,'three-minute observation remains visible');assert(context.oldObservation(earlier),'earlier position is explicitly marked old');
   context.positionFixture.items[0].recptnDt=received;
   context.positionFixture.items.push(pos('extra','홍대입구','문산'));
   vm.runInContext('live.destination=null;live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
