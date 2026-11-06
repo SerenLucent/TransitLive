@@ -125,6 +125,18 @@ setImmediate(async()=>{
   assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:2},'상행'),false,'departing two stations away is not the final approach');
   assert.equal(context.hideTerminatingMarker({...terminating,arvlCd:'3',positionStatus:undefined,positionDistance:undefined},'상행'),false,'arrival status alone keeps terminal train visible after previous station departure');
   const savedPositionItems=context.positionFixture.items;
+  const farDiagram=context.platformDiagram([{btrainNo:'5045',bstatnNm:'문산',positionDistance:7,positionStatus:'1',positionStationName:'일산'}],'상행');
+  assert.doesNotMatch(farDiagram,/data-train="5045"/,'offscreen train is never clamped onto the fourth station');
+  assert.match(farDiagram,/#5045 일산 · 7역 전 · 표시 범위 밖/,'offscreen train shows actual received location separately');
+  const nearbyDiagram=context.platformDiagram([{btrainNo:'5045',bstatnNm:'문산',positionDistance:4,positionStatus:'1'}],'상행');
+  assert.match(nearbyDiagram,/data-train="5045"/,'a train genuinely at four stations away stays visible');
+  context.positionFixture.items=[pos('5045','홍대입구','문산')];
+  const conflicting=context.stoppingArrivals([{btrainNo:'5045',bstatnNm:'문산',updnLine:'상행',ordkey:'01001',arvlCd:'3',arvlMsg2:'전역 출발',barvlDt:'90',recptnDt:new Date(Date.now()+9*3600000+1000).toISOString().slice(0,19).replace('T',' ')}])[0];
+  assert.equal(context.platformDistance(conflicting,'상행'),3,'detail uses same position snapshot as whole map even when arrival message is newer');
+  assert.equal(conflicting.positionStationName,'홍대입구');
+  assert.doesNotMatch(context.platformMessage(conflicting,'상행').main,/90초|1분/,'ETA from another observation is not attached to position-based status');
+  for(const status of ['0','1','2','3'])assert.equal(context.platformTrackDistance({positionDistance:2,positionStatus:status},'상행'),2-context.positionStateOffset(status),'main map and detail share state offsets');
+  context.positionFixture.items=savedPositionItems;
   context.positionFixture.items=[pos('through-depart','수색','문산','0',{trainSttus:'3'})];
   const approachingFromPrevious=context.positionArrivalRows([],'상행');
   assert.equal(approachingFromPrevious.length,1,'previous-station departure status remains approaching even when position feed names the target station');
