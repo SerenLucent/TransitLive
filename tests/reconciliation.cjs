@@ -40,6 +40,9 @@ setImmediate(()=>{
  const equalTime=time(0);ctx.installPositions({updatedAt:Date.now()+4,items:[pos('일산',-2,{recptnDt:equalTime})]});ctx.installArrivals(key,{updatedAt:Date.now()+4,items:[arrival('곡산',-2,{recptnDt:equalTime})]});
  assert.equal(models().length,0,'contradictory equal-time positions are not arbitrarily painted on map');
  const uncertain=ctx.stoppingArrivals([arrival('곡산',-2,{recptnDt:equalTime})])[0];assert.equal(ctx.platformMessage(uncertain,'하행').main,'위치 확인 중');assert.doesNotMatch(ctx.platformDiagram([uncertain],'하행'),/data-train="5045"/);
+ const equivalentTime=time(1);ctx.installPositions({updatedAt:Date.now()+5,items:[pos('강매',1,{recptnDt:equivalentTime,trainSttus:'3'})]});ctx.installArrivals(key,{updatedAt:Date.now()+5,items:[arrival('행신',1,{recptnDt:equivalentTime,arvlCd:'3',arvlMsg2:'전역 출발'})]});
+ assert.equal(models().length,1,'target station plus previous-departure equals previous station plus departure, not a conflict');
+ assert.equal(models()[0].from,ctx.names.indexOf('강매')-.75);
  assert.equal(ctx.recentPosition({recptnDt:time(-91)}),false);assert.equal(ctx.recentPosition({recptnDt:time(30)}),false);assert.equal(ctx.observationTime({recptnDt:'2026-11-06T09:00:00+09:00'}),ctx.observationTime({recptnDt:'2026-11-06 09:00:00'}),'timezone suffix parsed once');
  for(const [code,station,status] of [['0','강매','0'],['1','강매','1'],['2','강매','2'],['3','행신','2'],['4','행신','0'],['5','행신','1']]){
   const row=arrival('',-2,{arvlCd:code,arvlMsg2:''}),location=ctx.arrivalLocation(row,'강매');assert.equal(location.statnNm,station,'arrival code '+code+' station');assert.equal(location.trainSttus,status);

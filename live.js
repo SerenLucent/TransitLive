@@ -37,19 +37,20 @@ function rebuildPositionModels(){
   const now=performance.now();
   live.models=sharedPositionRows().flatMap(r=>{
     if(r.locationUncertain)return [];
-    const canonical=currentLine.stations.find(s=>s.id&&s.id===r.statnId);
-    const i=names.indexOf(canonical?canonical.name:normalizeStation(r.statnNm));if(i<0)return [];
-    // Along the listed station order, inner-circle trains advance; outer reverse.
-    let sign=currentRoute.oneWay?1:String(r.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1;
-    const terminus=names.indexOf(normalizeStation(r.statnTnm));
-    if(!currentRoute.loop&&terminus>=0&&terminus!==i)sign=terminus>i?1:-1;
-    const status=String(r.trainSttus);
-    const target=wrap(i+sign*positionStateOffset(status));
+    const location=mapLocation(r);if(!location)return [];
+    const {sign,target}=location;
     const id=String(r.trainNo)+':'+r.updnLine;
     return [{id,row:r,sign,from:target,delta:0,since:now}];
   });
   trains.replaceChildren();
   live.models.forEach(m=>{const express=expressStopInfo(currentLine.number,m.row,names[selected]).express;const el=document.createElement('div');el.className='train '+(express?'express-train ':'')+(String(m.row.updnLine)==='0'?'train-up':'train-down')+(terminalInfo(m.row.statnTnm).shortTurn?' short-turn':'');el.innerHTML=trainIcon+'<span class="train-direction-arrow"></span>'+(express?'<span class="map-express-badge">급행</span>':'');el.setAttribute('aria-hidden','true');el.title=(express?'급행 ':'')+'열차 '+m.row.trainNo+' · '+m.row.statnNm+' · '+(m.row.statnTnm||'종착역 미제공');m.el=el;trains.append(el)});
+}
+function mapLocation(row){
+  const index=names.indexOf(positionStation(row));if(index<0)return null;
+  let sign=currentRoute.oneWay?1:String(row.updnLine)===(currentLine.number===2&&currentRoute.loop?'0':'1')?1:-1;
+  const terminal=names.indexOf(terminalInfo(row.statnTnm).name);
+  if(!currentRoute.loop&&terminal>=0&&terminal!==index)sign=terminal>index?1:-1;
+  return {sign,target:wrap(index+sign*positionStateOffset(row.trainSttus))};
 }
 function positionStateOffset(status){return ({'0':-.25,'1':0,'2':.25,'3':-.75,'moving':.5})[String(status)]??0}
 function modelPosition(m,now){return wrap(m.from+m.delta*Math.min(1,Math.max(0,(now-m.since)/2500)))}
@@ -194,7 +195,8 @@ function sharedPositionRows(extra=[]){
     else{
       const index=matches[0],prior=rows[index],newer=observationTime(candidate)>observationTime(prior),sameTime=observationTime(candidate)===observationTime(prior);
       const a=names.indexOf(positionStation(prior)),b=names.indexOf(candidate.statnNm);
-      const differs=positionStation(prior)!==candidate.statnNm||positionStateOffset(prior.trainSttus)!==positionStateOffset(candidate.trainSttus);
+      const priorLocation=mapLocation(prior),nextLocation=mapLocation(candidate);
+      const differs=priorLocation&&nextLocation?Math.abs(priorLocation.target-nextLocation.target)>.001:positionStation(prior)!==candidate.statnNm||positionStateOffset(prior.trainSttus)!==positionStateOffset(candidate.trainSttus);
       const gap=a>=0&&b>=0?Math.abs(a-b):0;
       const next=newer?candidate:prior;
       rows[index]={...next,locationWarning:prior.locationWarning||gap>=2,locationUncertain:next.locationUncertain||(sameTime&&differs)};
