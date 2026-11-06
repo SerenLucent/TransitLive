@@ -54,11 +54,24 @@ setImmediate(()=>{
   else{assert.equal(current.length,1);assert.equal(ctx.platformTrackDistance(current[0],'하행'),offset,'nearby approach state '+code);assert.equal(ctx.oldObservation(current[0]),false);}
   const model=models().find(m=>m.row.trainNo==='near-001');assert(model);assert.equal(model.from,ctx.names.indexOf('강매')-offset,'map and detailed coordinate agree throughout approach');
  }
- ctx.window.renderLive();assert.match(el('#detail').innerHTML,/이전 관측 열차/);assert.match(el('#detail').innerHTML,/old-only/,'old train remains available in its own direction panel');assert.match(el('#detail').innerHTML,/현재 위치 확인 필요/);
+ ctx.window.renderLive();assert.match(el('#detail').innerHTML,/마지막 관측 열차/);assert.match(el('#detail').innerHTML,/old-only/,'old train remains available in its own direction panel');assert.match(el('#detail').innerHTML,/현재 위치 확인 필요/);
  ctx.installPositions({updatedAt:Date.now()+30,items:[]});
  ctx.installArrivals(key,{updatedAt:Date.now()+30,items:[arrival('곡산',1,{btrainNo:'fresh-far'}),arrival('행신',-180,{btrainNo:'older-near',arvlCd:'5',arvlMsg2:'전역 도착'})]});
- ctx.window.renderLive();assert.match(el('#detail').innerHTML,/확인된 열차/,'a potentially closer old observation prevents claiming a farther fresh train is definitely first');assert.match(el('#detail').innerHTML,/더 가까운 열차의 최신 위치를 확인 중/);assert.match(el('#detail').innerHTML,/older-near/);
+ ctx.window.renderLive();assert.match(el('#detail').innerHTML,/마지막 관측 열차 <small>#older-near/,'closest old train remains in the main board rather than an empty placeholder');assert.match(el('#detail').innerHTML,/마지막으로 받은 위치에 열차를 표시/);assert.match(el('#detail').innerHTML,/older-near/);
  assert(models().some(m=>m.row.trainNo==='older-near'),'old nearby train stays on full map');
+ assert.match(el('#detail').innerHTML,/data-train="older-near"/,'same older nearby train is drawn in the main detail diagram without expanding any list');
+ assert.doesNotMatch(el('#detail').innerHTML,/아래에서 마지막 위치를 확인하세요/,'old observations do not replace the diagram with a placeholder');
+ const nearby=ctx.positionArrivalRows([],'하행');
+ for(const row of nearby){const model=models().find(m=>ctx.sameService(m.row,row));if(!model)continue;const distance=(ctx.selected-model.from)*model.sign;if(distance>=0&&distance<=4)assert.equal(ctx.diagramTrackDistance(row,'하행'),distance,'detail is a crop of whole-map coordinates');}
+ const crowded=ctx.platformDiagram([
+  {btrainNo:'far-a',bstatnNm:'용문',positionDistance:8},
+  {btrainNo:'far-b',bstatnNm:'용문',positionDistance:7},
+  {btrainNo:'visible-a',bstatnNm:'용문',positionDistance:1},
+  {btrainNo:'visible-b',bstatnNm:'용문',positionDistance:2},
+  {btrainNo:'visible-c',bstatnNm:'용문',positionDistance:3}
+ ],'하행');
+ for(const id of ['visible-a','visible-b','visible-c'])assert.match(crowded,new RegExp('data-train="'+id+'"'),'offscreen entries and the old two-train limit never hide an in-range train');
+ assert.match(crowded,/data-outside-train="far-a"/,'offscreen train has its own image card instead of disappearing or being placed on the wrong station');
  assert(ctx.usableObservation({recptnDt:time(-180)}),'age alone does not discard operating-day observation');
  assert.equal(ctx.usableObservation({recptnDt:time(-48*3600)}),false,'previous operating day is not mixed into current services');
  assert.equal(ctx.recentPosition({recptnDt:time(-91)}),false);assert.equal(ctx.recentPosition({recptnDt:time(30)}),false);assert.equal(ctx.observationTime({recptnDt:'2026-11-06T09:00:00+09:00'}),ctx.observationTime({recptnDt:'2026-11-06 09:00:00'}),'timezone suffix parsed once');

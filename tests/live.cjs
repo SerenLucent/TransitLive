@@ -128,7 +128,7 @@ setImmediate(async()=>{
   const savedPositionItems=context.positionFixture.items;
   const farDiagram=context.platformDiagram([{btrainNo:'5045',bstatnNm:'문산',positionDistance:7,positionStatus:'1',positionStationName:'일산'}],'상행');
   assert.doesNotMatch(farDiagram,/data-train="5045"/,'offscreen train is never clamped onto the fourth station');
-  assert.match(farDiagram,/#5045 일산 · 7역 전 · 표시 범위 밖/,'offscreen train shows actual received location separately');
+  assert.match(farDiagram,/#5045 · 일산 · 7역 전<br>그림 범위 밖/,'offscreen train shows actual received location separately');
   const nearbyDiagram=context.platformDiagram([{btrainNo:'5045',bstatnNm:'문산',positionDistance:4,positionStatus:'1'}],'상행');
   assert.match(nearbyDiagram,/data-train="5045"/,'a train genuinely at four stations away stays visible');
   context.positionFixture.items=[pos('5045','홍대입구','문산')];

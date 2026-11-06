@@ -185,3 +185,5 @@
 .train.observation-old{outline:1px dashed #987138;outline-offset:2px;border-radius:5px}.train.observation-old::after{content:"이전";position:absolute;left:50%;top:-15px;transform:translateX(-50%) rotate(var(--badge-rotation,0deg));font-size:9px;line-height:13px;white-space:nowrap;color:#76531e;background:#fff5df;border:1px solid #d4b57b;border-radius:4px;padding:0 3px}.platform-train.observation-old>span{color:#76531e;background:#fff5df;border-color:#d4b57b}.platform-age-note,.old-observation-note{color:#83602c}.old-observation-note{font-size:11px;line-height:1.5;margin:0 3px 10px}.old-observations>summary{color:#83602c!important}
 
 .platform-nearby-note{margin:12px 10px 0;padding:9px 10px;border:1px solid #d4b57b;border-radius:8px;background:#fff5df;color:#76531e;font-size:12px;line-height:1.5}
+
+.platform-outside-train{display:flex;align-items:center;gap:9px;margin:4px 0}.platform-outside-train>img{width:44px;height:29px;object-fit:contain;flex:none}.platform-outside-train>img.faces-left{transform:scaleX(-1)}
