@@ -3,8 +3,8 @@ const elements=new Map();
 function element(){return {style:{},value:'',children:[],textContent:'',innerHTML:'',addEventListener(){},classList:{toggle(){}},setAttribute(){},append(e){this.children.push(e)},replaceChildren(){this.children=[]},remove(){},firstElementChild:{style:{}}}}
 const el=k=>{if(!elements.has(k))elements.set(k,element());return elements.get(k)};
 let calls=0;
-const document={hidden:false,querySelector:el,addEventListener(){},createElement:element,head:{append(script){calls++;const u=new URL(script.src),station=u.searchParams.get('station');const data={ok:true,line:'2호선',updatedAt:Date.now(),stale:false,items:station?[{updnLine:'내선',ordkey:'11001',btrainNo:'2226',bstatnNm:'성수',arvlMsg2:'4분 후',arvlMsg3:'삼성'}]:[{statnNm:'강남',trainNo:'2226',updnLine:'0',trainSttus:'1',recptnDt:new Date(Date.now()+9*3600000).toISOString().slice(0,19).replace('T',' ')},{statnNm:'신설동',trainNo:'1595',updnLine:'1',trainSttus:'1'}]};queueMicrotask(()=>context.window[u.searchParams.get('callback')](data))}}};
-const context={currentLine:{number:2,name:'2호선',stations:[]},currentRoute:{loop:true},stationFor:()=>null,normalizeStation:v=>v,document,window:{},URL,Date,Math,Map,Promise,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout(){},names:['시청',...Array(20).fill('기타'),'강남',...Array(21).fill('기타')],selected:21,paused:false,trainIcon:'<img>',trains:element(),positionAt:p=>({x:p,y:100}),renderDetail(){if(context.window.renderLive)context.window.renderLive()}};
+const document={hidden:false,querySelector:el,addEventListener(){},createElement:element,head:{append(script){calls++;const u=new URL(script.src),station=u.searchParams.get('station');const data={ok:true,line:'2호선',updatedAt:Date.now(),stale:false,items:station?[{updnLine:'내선',ordkey:'11001',btrainNo:'2226',bstatnNm:'성수',arvlMsg2:'4분 후',arvlMsg3:'삼성'}]:[{statnNm:'강남',statnTnm:'성수',trainNo:'2226',updnLine:'0',trainSttus:'1',recptnDt:new Date(Date.now()+9*3600000).toISOString().slice(0,19).replace('T',' ')},{statnNm:'신설동',trainNo:'1595',updnLine:'1',trainSttus:'1'}]};queueMicrotask(()=>context.window[u.searchParams.get('callback')](data))}}};
+const context={currentLine:{number:2,name:'2호선',stations:[]},currentRoute:{loop:true},stationFor:()=>null,normalizeStation:v=>v,document,window:{},URL,Date,Math,Map,Promise,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout(){},names:['시청','성수',...Array(19).fill('기타'),'강남',...Array(21).fill('기타')],selected:21,paused:false,trainIcon:'<img>',trains:element(),positionAt:p=>({x:p,y:100}),renderDetail(){if(context.window.renderLive)context.window.renderLive()}};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('express-data.js','utf8')+'\n'+fs.readFileSync('express.js','utf8')+'\nexpressDayOverride="weekday";',context);
 vm.runInContext(fs.readFileSync('live.js','utf8'),context);
@@ -22,7 +22,7 @@ setImmediate(async()=>{
   assert.match(el('#detail').innerHTML,/platform-board-header/,'current train metadata belongs in board header');
   assert.match(el('#detail').innerHTML,/platform-main-status/,'arrival status is the board headline');
   assert.doesNotMatch(el('#detail').innerHTML,/platform-primary-grid/,'current and next trains are not separate cards');
-  assert.match(context.platformMessage({arvlMsg2:'2분 후',arvlMsg3:'',positionDistance:1},'상행').main,/2분 후.*도착/,'provided ETA is the headline');
+  assert.match(context.platformMessage({eta:'2분 후',positionDistance:1},'상행').main,/2분 후.*도착/,'provided ETA is the headline');
   assert.doesNotMatch(context.platformMessage({arvlMsg2:'1개 역 전',positionDistance:1,positionBased:true},'상행').main,/분|초/,'position-only arrivals never invent ETA');
   assert.match(el('#detail').innerHTML,/도착 · 정차 중/,'newer platform position overrides older four-minute message');
   el('#destination').value='';context.renderDestinationResults();
@@ -61,14 +61,14 @@ setImmediate(async()=>{
   assert.equal(merged[0].btrainNo,'5106','missing local at Gajwa comes before distant express');
   assert.equal(merged[0].positionDistance,2);assert.equal(merged[0].arvlMsg2,'2개 역 전');
   assert(merged.some(r=>r.btrainNo==='2224'),'Seoul branch through Gajwa reaches Susaek');
-  assert.equal(merged.length,3,'all confirmed approaching trains shown, no two-train limit');
+  assert.equal(merged.length,2,'both approaching stopping services remain visible');
   assert(!merged.some(r=>['passed','short','old','terminal'].includes(r.btrainNo)),'passed, short-turn, stale and opposite-direction trains excluded');
   assert(!merged.some(r=>r.btrainNo==='express'),'unconfirmed position-only express is excluded');
   assert(!merged.some(r=>r.btrainNo==='2512'),'Seoul branch express passes Susaek according to official timetable');
   assert(context.positionArrivalRows([],'하행').some(r=>r.btrainNo==='terminal'),'selected station as terminus is included');
   assert.equal(context.positionArrivalRows([{...official[0],btrainNo:'05106'}],'상행').filter(r=>String(r.btrainNo).endsWith('5106')).length,1,'leading-zero IDs deduplicate');
-  assert.equal(context.stoppingArrivals(official).length,0,'official feed express that passes Susaek is removed');
-  const corrected=context.stoppingArrivals([{btrainNo:'5106',bstatnNm:'문산',updnLine:'상행',ordkey:'01018문산0',arvlCd:'99',arvlMsg2:'18개 역 전'}])[0];
+  assert.equal(context.positionArrivalRows(official,'상행').filter(r=>r.locationUnknown).length,0,'official feed express that passes Susaek is removed');
+  const corrected=context.positionArrivalRows([{btrainNo:'5106',bstatnNm:'문산',updnLine:'상행',ordkey:'01018문산0',arvlCd:'99',arvlMsg2:'18개 역 전'}],'상행')[0];
   assert.equal(corrected.arvlMsg2,'2개 역 전','newer nearby position corrects an older distant message for same train');
   context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-180000).toISOString().slice(0,19).replace('T',' ');
   const earlier=context.positionArrivalRows([],'상행').find(r=>r.btrainNo==='5106');assert(earlier,'three-minute observation remains visible');assert(context.oldObservation(earlier),'earlier position is explicitly marked old');
@@ -86,18 +86,11 @@ setImmediate(async()=>{
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'1'},'상행'),1,'stopped train stays on station');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},'상행'),.75,'departed train goes halfway toward selected station');
   assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'0'},'상행'),1.25,'entering train is between station and preceding station');
-  assert.equal(context.platformTrackDistance({arvlCd:'3'},'상행'),.75,'previous-station departure needs no position feed');
-  assert.equal(context.platformTrackDistance({arvlCd:'5'},'하행'),1,'previous-station arrival stays exactly on previous station');
-  assert.equal(context.platformTrackDistance({arvlCd:'0'},'하행'),.25,'entering selected station is still in the approaching gap');
-  assert.equal(context.platformTrackDistance({arvlCd:'1'},'하행'),0,'arrived train sits at selected station');
   const moving={btrainNo:'moving',bstatnNm:'문산',positionDistance:1,positionStatus:'2'};
   for(const direction of ['상행','하행','내선','외선']){
     assert.equal(context.platformTrackDistance({positionDistance:1,positionStatus:'2'},direction),.75,'departure is one quarter along the next segment');
-    assert.equal(context.platformTrackDistance({positionDistance:1,arvlMsg2:'이동 중'},direction),.5,'explicit movement is midway');
     assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'0'},direction),.25,'entry is three quarters along the approaching segment');
     assert.equal(context.platformTrackDistance({positionDistance:0,positionStatus:'1'},direction),0,'arrival is exactly on station');
-    assert.equal(context.platformTrackDistance({arvlCd:'4'},direction),1.25,'previous station entry remains behind that station');
-    assert.equal(context.platformTrackDistance({arvlCd:'99',arvlMsg2:'2개 역 전 진입'},direction),2.25,'explicit second previous station entry remains behind that station');
   }
   assert.match(context.platformDiagram([moving],'상행'),/data-train="moving" style="left:25%"/,'upbound movement is between selected and previous station');
   assert.match(context.platformDiagram([moving],'하행'),/data-train="moving" style="left:75%"/,'downbound movement mirrors the same gap');
@@ -105,7 +98,6 @@ setImmediate(async()=>{
   for(const direction of ['상행','하행']){
     assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:0,positionStatus:'0'},direction),true,'terminating train hides when entering selected station');
     assert.equal(context.hideTerminatingMarker({...moving,positionDistance:0,positionStatus:'0'},direction),false,'continuing train stays visible when entering selected station');
-    assert.equal(context.hideTerminatingMarker({bstatnNm:'수색',arvlCd:'0'},direction),true,'arrival-only entry hides terminating train');
     assert.equal(context.hideTerminatingMarker({...terminating,positionDistance:0,positionStatus:'3'},direction),false,'previous departure remains visible even when feed names selected station');
   }
   assert.equal(context.hideTerminatingMarker({...terminating,positionStatus:'1'},'상행'),false,'terminal image stays until previous station departure');
@@ -132,9 +124,9 @@ setImmediate(async()=>{
   const nearbyDiagram=context.platformDiagram([{btrainNo:'5045',bstatnNm:'문산',positionDistance:4,positionStatus:'1'}],'상행');
   assert.match(nearbyDiagram,/data-train="5045"/,'a train genuinely at four stations away stays visible');
   context.positionFixture.items=[pos('5045','홍대입구','문산')];
-  const conflicting=context.stoppingArrivals([{btrainNo:'5045',bstatnNm:'문산',updnLine:'상행',ordkey:'01001',arvlCd:'3',arvlMsg2:'전역 출발',barvlDt:'90',recptnDt:new Date(Date.now()+9*3600000+1000).toISOString().slice(0,19).replace('T',' ')}])[0];
-  assert.equal(context.platformDistance(conflicting,'상행'),1,'newer arrival position overrides older whole-map position');
-  assert.equal(conflicting.positionStationName,'디지털미디어시티');
+  const conflicting=context.positionArrivalRows([{btrainNo:'5045',bstatnNm:'문산',updnLine:'상행',ordkey:'01001',arvlCd:'3',arvlMsg2:'전역 출발',barvlDt:'90',recptnDt:new Date(Date.now()+9*3600000+1000).toISOString().slice(0,19).replace('T',' ')}],'상행')[0];
+  assert.equal(context.platformDistance(conflicting,'상행'),3,'newer arrival cannot override whole-map position');
+  assert.equal(conflicting.positionStationName,'홍대입구');
   assert.match(context.platformMessage(conflicting,'상행').main,/1분/,'latest arrival keeps its own ETA with its own status');
   for(const status of ['0','1','2','3'])assert.equal(context.platformTrackDistance({positionDistance:2,positionStatus:status},'상행'),2-context.positionStateOffset(status),'main map and detail share state offsets');
   context.positionFixture.items=savedPositionItems;
@@ -143,7 +135,7 @@ setImmediate(async()=>{
   assert.equal(approachingFromPrevious.length,1,'previous-station departure status remains approaching even when position feed names the target station');
   assert.match(context.platformDiagram(approachingFromPrevious,'상행'),/data-train="through-depart" style="left:25%"/,'continuing train remains in final gap');
   assert.equal(context.hideTerminatingMarker(approachingFromPrevious[0],'상행'),false);
-  const freshDeparture=context.stoppingArrivals([{btrainNo:'through-depart',bstatnNm:'문산',arvlCd:'2'}]);
+  const freshDeparture=context.positionArrivalRows([{btrainNo:'through-depart',bstatnNm:'문산',updnLine:'상행',arvlCd:'2'}],'상행');
   assert.equal(context.upcomingArrivals(freshDeparture).length,1,'fresh previous-station departure overrides obsolete departure message');
   context.positionFixture.items=[pos('ends-depart','수색','수색','0',{trainSttus:'3'})];
   const endingFromPrevious=context.positionArrivalRows([],'상행');
@@ -151,12 +143,12 @@ setImmediate(async()=>{
   assert.equal(context.hideTerminatingMarker(endingFromPrevious[0],'상행'),false,'terminating train also remains visible in the final gap');
   context.positionFixture.items=[pos('terminaldepart','디지털미디어시티','수색','0',{trainSttus:'2'})];
   const olderArrival={btrainNo:'terminaldepart',bstatnNm:'수색',updnLine:'상행',arvlCd:'4',ordkey:'01001',arvlMsg2:'전역 진입',recptnDt:new Date(Date.now()+9*3600000-20000).toISOString().slice(0,19).replace('T',' ')};
-  const departedTerminal=context.stoppingArrivals([olderArrival])[0];
+  const departedTerminal=context.positionArrivalRows([olderArrival],'상행')[0];
   assert.equal(departedTerminal.positionStatus,'2','fresh departure status is carried into the detailed diagram');
   assert.equal(context.hideTerminatingMarker(departedTerminal,'상행'),false,'new departure retains terminal in the gap despite older arrival status');
   context.positionFixture.items[0].recptnDt=new Date(Date.now()+9*3600000-40000).toISOString().slice(0,19).replace('T',' ');
-  const newerArrival=context.stoppingArrivals([{...olderArrival,recptnDt:received}])[0];
-  assert.equal(context.hideTerminatingMarker(newerArrival,'상행'),false,'older position must not override newer arrival status');
+  const newerArrival=context.positionArrivalRows([{...olderArrival,recptnDt:received}],'상행')[0];
+  assert.equal(newerArrival.positionStatus,'2','arrival status cannot change the location-derived state');
   context.positionFixture.items=savedPositionItems;
   const boardPositions=context.positionFixture.items.slice();
   for(let i=0;i<8;i++)context.positionFixture.items.push(pos('more'+i,'홍대입구','문산'));
@@ -170,9 +162,9 @@ setImmediate(async()=>{
   vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:[]});window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/이 역 종착 열차를 제외/);assert.doesNotMatch(el('#detail').innerHTML,/data-train="platform"/,'selected-station terminal train no longer drawn at platform');
   const platformReport={btrainNo:'platform',bstatnNm:'수색',updnLine:'상행',arvlCd:'1'};
-  assert.equal(context.stoppingArrivals([platformReport])[0].arvlCd,'1','stopped train stays current');
+  assert.equal(context.positionArrivalRows([platformReport],'상행')[0].arvlCd,'1','stopped train stays current');
   context.positionFixture.items[0].trainSttus='2';
-  assert.equal(context.stoppingArrivals([platformReport]).length,0,'new departure position overrides older arrived message immediately');
+  assert.equal(context.positionArrivalRows([platformReport],'상행').length,0,'new departure position overrides older arrived message immediately');
   context.positionFixture.stale=true;assert.equal(context.positionArrivalRows([],'상행').length,0,'stale position snapshot never supplements arrivals');
   vm.runInContext('live.positions=null;live.destination=null',context);
   context.terminalArrivalFixture=[
@@ -183,11 +175,13 @@ setImmediate(async()=>{
     {btrainNo:'ending3',bstatnNm:'수색',updnLine:'상행',arvlCd:'99',ordkey:'01004',arvlMsg2:'9분 후',positionDistance:4},
     {btrainNo:'through2',bstatnNm:'문산',updnLine:'상행',arvlCd:'99',ordkey:'01005',arvlMsg2:'12분 후',positionDistance:5}
   ];
-  vm.runInContext('live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:terminalArrivalFixture});window.renderLive()',context);
+  context.terminalArrivalFixture.forEach(r=>r.recptnDt=received);
+  context.positionFixture={updatedAt:Date.now(),items:[pos('ending0','수색','수색'),pos('ending1','디지털미디어시티','수색','0',{trainSttus:'2'}),pos('ending2','가좌','수색'),pos('through1','홍대입구','문산'),pos('ending3','상봉','수색')]};
+  vm.runInContext('live.positions=positionFixture;live.arrivals.set(arrivalKey(),{updatedAt:Date.now(),items:terminalArrivalFixture});window.renderLive()',context);
   assert.match(el('#detail').innerHTML,/platform-current-label">이번 열차 <small>#through1/,'skip every terminal train before current continuing train');
-  assert.match(el('#detail').innerHTML,/platform-next-label">다음 열차 <small>#through2/,'skip intervening terminal trains before next continuing train');
+  assert.match(el('#detail').innerHTML,/위치 미확인 열차[\s\S]*?#through2/,'unmatched continuing train stays in the list');
   assert.match(el('#detail').innerHTML,/8분 후/);assert.match(el('#detail').innerHTML,/12분 후/);
-  assert.doesNotMatch(el('#detail').innerHTML,/9분 후|60초|120초/,'terminal ETA is never borrowed by another train');
+  assert.doesNotMatch(el('#detail').innerHTML,/platform-main-status[^<]*<strong><em>9분 후/,'terminal ETA is never borrowed by another train');
   assert.doesNotMatch(el('#detail').innerHTML,/data-train="ending0"/);
   assert.match(el('#detail').innerHTML,/data-train="ending2"/,'earlier terminal train remains visible before station entry');
   assert.match(el('#detail').innerHTML,/이번·다음 열차의 도착시간에서 제외/);

@@ -30,14 +30,14 @@ function recordLiveResponse(action,line,station,data){
 window.transitLiveDiagnostics=()=>JSON.stringify({version:'20261106-last-observation',events:live.diagnostics},null,2);
 function installPositions(data){
   if(live.positions&&data.updatedAt<live.positions.updatedAt)return;
-  const previousRows=new Map((live.positions?.items||[]).map(r=>[String(r.trainNo)+':'+r.updnLine,r]));
-  data={...data,items:(data.items||[]).map(r=>{const previous=previousRows.get(String(r.trainNo)+':'+r.updnLine);return previous&&observationTime(previous)>observationTime(r)?previous:r})};
+  const previousRows=new Map((live.positions?.items||[]).map(r=>[positionKey(r),r]));
+  data={...data,items:(data.items||[]).map(r=>{const previous=previousRows.get(positionKey(r));return previous&&observationTime(previous)>observationTime(r)?previous:r})};
   live.positions=data;rebuildPositionModels();
 }
 function rebuildPositionModels(){
   const now=performance.now();
   const previous=new Map(live.models.map(m=>[m.id,m]));
-  live.models=sharedPositionRows([],true).flatMap(r=>{
+  live.models=sharedPositionRows(true).flatMap(r=>{
     if(r.locationUncertain)return [];
     const location=mapLocation(r);if(!location)return [];
     const {sign,target}=location;
@@ -172,77 +172,23 @@ function positionStation(position){
 }
 function directionCode(value){
   const text=String(value??'');
-  return text==='0'||/상행|내선|순환/.test(text)?'0':text==='1'||/하행|외선/.test(text)?'1':null;
-}
-function sameService(position,row){
-  if(expressTrainKey(position.trainNo)!==expressTrainKey(row.btrainNo||row.trainNo))return false;
-  const direction=directionCode(row.updnLine);
-  if(direction!==null&&directionCode(position.updnLine)!==direction)return false;
-  const terminal=terminalInfo(row.bstatnNm||row.statnTnm).name;
-  return !terminal||!position.statnTnm||terminalInfo(position.statnTnm).name===terminal;
+  return text==='1'||/하행|외선/.test(text)?'1':text==='0'||/상행|내선|순환/.test(text)?'0':null;
 }
 function positionKey(row){
   return [currentLine.number,expressTrainKey(row.trainNo||row.btrainNo),directionCode(row.updnLine),terminalInfo(row.statnTnm||row.bstatnNm).name].join(':');
 }
-function reportedStation(row){
-  const known=[...new Set([...names,...currentLine.stations.map(s=>s.name)])].sort((a,b)=>b.length-a.length);
-  for(const value of [row.arvlMsg3,row.arvlMsg2]){
-    const raw=String(value||'').trim(),normalized=normalizeStation(raw).trim();
-    if(known.includes(normalized))return normalized;
-    for(const name of known){if(raw.includes('('+name+')')||[' 진입',' 도착',' 출발',' 정차'].some(state=>raw.startsWith(name+state)||raw.startsWith(name+'역'+state)))return name;}
-  }
-  return '';
-}
-// Convert only a reported station/state to a location; never turn an ETA into motion.
-function arrivalLocation(row,station){
-  const direction=directionCode(row.updnLine),code=String(row.arvlCd??'');
-  if(!row.btrainNo||direction===null||!usableObservation(row))return null;
-  let name=reportedStation(row),status;
-  const current=['0','1','2'].includes(code);
-  if(current){name=station;status=code;}
-  else{
-    status=({'3':'2','4':'0','5':'1'})[code];
-    if(!status){
-      const raw=String(row.arvlMsg2||'');
-      status=/출발/.test(raw)?'2':/진입/.test(raw)?'0':/도착|정차/.test(raw)&&!/[분초].*후/.test(raw)?'1':/이동\s*중/.test(raw)?'moving':null;
-    }
-    if(!currentLine.stations.some(s=>s.name===name)&&!names.includes(name)){
-      const reported=String(row.arvlMsg2||'').match(/(\d+)\s*(?:개\s*)?역\s*전/);
-      const distance=({'3':1,'4':1,'5':1})[code]??(reported?Number(reported[1]):undefined);
-      const index=names.indexOf(station),sign=currentRoute.oneWay?1:currentLine.number===2&&currentRoute.loop?(direction==='0'?1:-1):(direction==='1'?1:-1);
-      if(distance===undefined||index<0)return null;
-      const target=index-sign*distance;
-      if(!currentRoute.loop&&(target<0||target>=names.length))return null;
-      name=names[(target+names.length)%names.length];
-    }
-  }
-  if(!name)return null;
-  return {trainNo:row.btrainNo,updnLine:direction,statnNm:name,statnTnm:row.bstatnNm,trainSttus:status??'unknown',recptnDt:row.recptnDt,source:'arrivals',arrivalRow:row,snapshotStale:!!row.snapshotStale};
-}
-function sharedPositionRows(extra=[],remember=false){
-  const rows=availablePositionRows().map(r=>({...r,source:'positions'}));
-  const add=(items,station)=>{for(const row of items){const candidate=arrivalLocation(row,station);if(!candidate)continue;
-    const matches=rows.map((p,i)=>sameService(p,row)?i:-1).filter(i=>i>=0);
-    if(matches.length>1)continue;
-    if(!matches.length)rows.push(candidate);
-    else{
-      const index=matches[0],prior=rows[index],newer=observationTime(candidate)>observationTime(prior),sameTime=observationTime(candidate)===observationTime(prior);
-      const a=names.indexOf(positionStation(prior)),b=names.indexOf(candidate.statnNm);
-      const priorLocation=mapLocation(prior),nextLocation=mapLocation(candidate);
-      const differs=priorLocation&&nextLocation?Math.abs(priorLocation.target-nextLocation.target)>.001:positionStation(prior)!==candidate.statnNm||positionStateOffset(prior.trainSttus)!==positionStateOffset(candidate.trainSttus);
-      const gap=a>=0&&b>=0?Math.abs(a-b):0;
-      const next=newer?candidate:prior;
-      rows[index]={...next,locationWarning:prior.locationWarning||gap>=2,locationUncertain:next.locationUncertain||(sameTime&&differs)};
-    }
-  }};
-  for(const [key,data] of live.arrivals){if(!key.startsWith(currentLine.number+':'))continue;add((data.items||[]).map(r=>({...r,snapshotStale:!!data.stale})),key.slice(key.indexOf(':')+1));}
-  add(extra,names[selected]);
-  return keepLastPositions(rows,remember);
+function sharedPositionRows(remember=false){
+  if(currentLine.positions===false)return [];
+  return keepLastPositions(availablePositionRows(),remember);
 }
 // Keep the latest accepted observation across gaps in either feed. After the
 // short display grace, retain its timestamp so an older cached row cannot return.
 function keepLastPositions(rows,remember){
-  const now=Date.now(),prefix=currentLine.number+':',available=new Map(rows.map(row=>[positionKey(row),row]));
+  const now=Date.now(),prefix=currentLine.number+':',available=new Map();
+  for(const row of rows){
+    const key=positionKey(row),previous=available.get(key);
+    if(!previous||observationTime(row)>observationTime(previous))available.set(key,row);
+  }
   for(const [key,entry] of live.lastPositions){
     if(!usableObservation(entry.row)){if(remember)live.lastPositions.delete(key);continue;}
     if(!key.startsWith(prefix))continue;
@@ -260,50 +206,31 @@ function keepLastPositions(rows,remember){
   }
   return [...available.values()];
 }
-function stoppingArrivals(items){
-  const positions=sharedPositionRows(items);
-  return items.flatMap(r=>{
-    if(observationTime(r)&&!usableObservation(r))return [];
-    const info=expressStopInfo(currentLine.number,r,names[selected]);
-    if(info.express&&info.stops!==true)return [];
-    const matches=positions.filter(p=>sameService(p,r));
-    const position=matches.length===1?matches[0]:null;
-    let row={...r,isExpress:info.express};
-    if(position)row={...row,positionWarning:position.locationWarning,locationUncertain:position.locationUncertain,snapshotStale:!!position.snapshotStale};
-    if(!position){
-      const last=live.lastPositions.get(positionKey(r));
-      return last&&usableObservation(last.row)&&observationTime(last.row)>observationTime(r)?[]:[row];
-    }
-    const origin=positionStation(position),status=String(position.trainSttus),rowTime=observationTime(r),posTime=observationTime(position);
-    // A newer arrival row remains intact; its projected location is shared by the map.
-    if(position.missingUntil==null){
-      if(position.source==='arrivals'&&rowTime===posTime)return [{...row,positionStationName:origin,positionReceivedAt:position.recptnDt}];
-      if(rowTime&&rowTime>posTime)return [row];
-    }
-    row={...row,positionStationName:origin,positionReceivedAt:position.recptnDt};
-    if(origin===names[selected]){
-      if(status==='2')return [];
-      if(['0','1','3'].includes(status))return [{...row,positionStatus:status,positionDistance:0,positionBased:posTime!==rowTime,arvlCd:status==='3'?'3':status,arvlMsg2:status==='1'?'도착 · 정차 중':status==='3'?'전역 출발':'역 진입',arvlMsg3:origin}];
-    }
-    let distance;
-    if(currentRoute.loop){const index=names.indexOf(origin),sign=currentRoute.oneWay||String(position.updnLine)==='0'?1:-1;if(index>=0)distance=(sign*(selected-index)+names.length)%names.length;}
-    else{const terminal=terminalInfo(position.statnTnm).name,path=terminal?pathToTerminus(terminal,origin):null;if(path&&!path.includes(names[selected]))return [];distance=path?path.indexOf(names[selected]):-1;}
-    if(distance>0)return [{...row,positionStatus:status,positionDistance:distance,arvlCd:'99',arvlMsg2:distance+'개 역 전',arvlMsg3:origin,positionBased:true}];
-    return [row];
-  });
+function exactArrivalMatch(position,row){
+  const train=expressTrainKey(position.trainNo),direction=directionCode(position.updnLine),terminal=terminalInfo(position.statnTnm).name;
+  return !!train&&direction!==null&&!!terminal&&train===expressTrainKey(row.btrainNo)&&direction===directionCode(row.positionDirection??row.updnLine)&&terminal===terminalInfo(row.bstatnNm).name;
+}
+function reportedEta(row){
+  if(!row||row.snapshotStale||!recentPosition(row)||['0','1','2'].includes(String(row.arvlCd)))return '';
+  const text=String(row.arvlMsg2||'').match(/(?:\d+\s*분(?:\s*\d+\s*초)?|\d+\s*초)\s*후/);
+  const seconds=Number(row.barvlDt);
+  return text?.[0]||(Number.isFinite(seconds)&&seconds>0?(Math.floor(seconds/60)?Math.floor(seconds/60)+'분 ':'')+(seconds%60?seconds%60+'초 ':'')+'후':'');
 }
 function positionArrivalRows(items,direction){
-  if(currentLine.positions===false)return items;
-  const trainKey=expressTrainKey;
-  const known=new Set(items.map(r=>trainKey(r.btrainNo)).filter(Boolean));
-  const rows=items.slice();
-  for(const position of sharedPositionRows()){
-    const id=trainKey(position.trainNo);
-    if(!id||known.has(id))continue;
+  const positions=sharedPositionRows();
+  const arrivals=items.filter(r=>(direction==='순환'||directionCode(r.updnLine)===directionCode(direction))&&(!observationTime(r)||usableObservation(r)));
+  const consumed=new Set();
+  const rows=[];
+  for(const position of positions){
+    if(!expressTrainKey(position.trainNo))continue;
     const up=String(position.updnLine)==='0';
     if(direction!=='순환'&&up!==(direction==='상행'||direction==='내선'))continue;
+    const matching=arrivals.filter(r=>exactArrivalMatch(position,r)).sort((a,b)=>observationTime(b)-observationTime(a));
     const stop=expressStopInfo(currentLine.number,position,names[selected]);
-    if(stop.stops!==true)continue;
+    if(stop.stops!==true){
+      if(stop.stops===false)for(const row of matching)consumed.add(row);
+      continue;
+    }
     const origin=positionStation(position);
     const terminal=terminalInfo(position.statnTnm).name;
     if(!origin||!terminal)continue;
@@ -319,48 +246,36 @@ function positionArrivalRows(items,direction){
     }else{
       path=pathToTerminus(terminal,origin);
     }
-    const distance=path?path.indexOf(names[selected]):-1;
+    if(!path)continue;
+    for(const row of matching)consumed.add(row);
+    const distance=path.indexOf(names[selected]);
     if(distance<0)continue;
     const status=String(position.trainSttus);
     if(distance===0&&!['0','1','3'].includes(status))continue;
     const code=distance===0?(status==='1'?'1':status==='3'?'3':'0'):'99';
-    rows.push({updnLine:direction,btrainNo:position.trainNo,bstatnNm:position.statnTnm,arvlCd:code,
+    const eta=matching.length&&matching.filter(r=>observationTime(r)===observationTime(matching[0])).every(r=>reportedEta(r)===reportedEta(matching[0]))?reportedEta(matching[0]):'';
+    rows.push({eta,positionOffMap:!mapLocation(position),positionDirection:position.updnLine,updnLine:direction,btrainNo:position.trainNo,bstatnNm:position.statnTnm,arvlCd:code,
       arvlMsg2:distance===0?(status==='1'?'도착 · 정차 중':status==='3'?'전역 출발':'역 진입'):distance+'개 역 전',
       arvlMsg3:origin,positionStationName:origin,positionReceivedAt:position.recptnDt,positionDistance:distance,positionStatus:status,positionBased:true,isExpress:stop.express,directAt:position.directAt,positionWarning:position.locationWarning,locationUncertain:position.locationUncertain,snapshotStale:!!position.snapshotStale});
-    known.add(id);
+  }
+  for(const arrival of arrivals){
+    if(consumed.has(arrival))continue;
+    const info=expressStopInfo(currentLine.number,arrival,names[selected]);
+    if(info.stops===false)continue;
+    rows.push({...arrival,isExpress:info.express,locationUnknown:true,eta:reportedEta(arrival)});
   }
   return rows;
 }
-function platformDistance(r,direction){
-  if(r.locationUncertain)return null;
-  if(Number.isFinite(r.positionDistance))return r.positionDistance;
-  if(['0','1'].includes(String(r.arvlCd)))return 0;
-  if(['3','4','5'].includes(String(r.arvlCd)))return 1;
-  const sign=['내선','순환','하행'].includes(direction)?1:-1;
-  const index=names.indexOf(reportedStation(r));
-  if(index>=0){const distance=(selected-index)*sign;return currentRoute.loop?(distance+names.length)%names.length:distance>=0?distance:null}
-  const match=String(r.arvlMsg2||'').match(/(\d+)\s*(?:개\s*)?역\s*전/);
-  return match?Number(match[1]):null;
+function platformDistance(row){
+  return Number.isFinite(row.positionDistance)?row.positionDistance:null;
 }
 function endsAtSelectedStation(row){
   return terminalInfo(row.bstatnNm).name===names[selected];
 }
 // Schematic progress from reported states; these fractions are not GPS positions.
-function platformTrackDistance(row,direction){
-  const distance=platformDistance(row,direction),status=String(row.positionStatus??''),code=String(row.arvlCd??'');
-  if(distance===null)return null;
-  if(['0','1','2','3'].includes(status))return Math.max(0,distance-positionStateOffset(status));
-  if(status==='moving')return Math.max(0,distance-.5);
-  if(code==='1')return 0;
-  if(code==='0')return .25;
-  if(code==='3')return .75;
-  if(code==='4')return 1.25;
-  if(code==='5')return 1;
-  const raw=String(row.arvlMsg2||'');
-  if(/진입/.test(raw))return distance+.25;
-  if(/출발/.test(raw))return Math.max(0,distance-.25);
-  if(/이동\s*중/.test(raw))return Math.max(0,distance-.5);
-  return distance;
+function platformTrackDistance(row){
+  const distance=platformDistance(row);
+  return distance===null?null:Math.max(0,distance-positionStateOffset(row.positionStatus));
 }
 function hideTerminatingMarker(row,direction){
   if(!endsAtSelectedStation(row))return false;
@@ -374,15 +289,14 @@ function onwardArrivals(rows){
   return rows.filter(row=>!endsAtSelectedStation(row));
 }
 function platformMessage(r,direction){
+  if(r.locationUnknown)return {main:r.eta?'<em>'+esc(r.eta)+'</em> 도착':'위치 미확인',sub:r.eta?'위치 미확인':'도착시간 미제공',distance:null};
   if(oldObservation(r)){const distance=platformDistance(r,direction);return {main:'마지막 관측'+(distance!==null?' · '+distance+'역 전':''),sub:observationAge(r)+' · 현재 위치 확인 필요',distance};}
   if(r.locationUncertain)return {main:'위치 확인 중',sub:'같은 시각의 위치정보가 서로 달라요',distance:null};
   const raw=String(r.arvlMsg2||''),code=String(r.arvlCd),distance=platformDistance(r,direction);
   const prefix=distance===0?'':distance===1?'전역 ':distance===2?'전전역 ':'';
   const observed=r.positionStatus==='1'?(distance===0?'도착 · 정차 중':prefix+'정차 중'):r.positionStatus==='2'?prefix+'출발':r.positionStatus==='0'?prefix+'진입':r.positionStatus==='3'?(distance===0?'전역 출발':distance===1?'전전역 출발':'이동 중'):'';
   const state=observed||({0:'역 진입',1:'도착 · 정차 중',3:'전역 출발',4:'전역 진입',5:'전역 정차 중'}[code])||(/전전역.*출발/.test(raw)?'전전역 출발':/전역.*출발/.test(raw)?'전역 출발':/전전역.*(?:정차|도착|진입)/.test(raw)?'전전역 정차':/전역.*(?:정차|도착|진입)/.test(raw)?'전역 정차':/출발/.test(raw)?(distance===1?'전역 출발':distance===2?'전전역 출발':'이동 중'):/정차|도착/.test(raw)&&!/[분초].*후/.test(raw)?(distance===1?'전역 정차':'이동 중'):'이동 중');
-  const time=raw.match(/(?:\d+\s*분(?:\s*\d+\s*초)?|\d+\s*초)\s*후/);
-  const seconds=Number(r.barvlDt);
-  const eta=!r.positionBased&&!['0','1'].includes(code)?time?.[0]||(seconds>0?(Math.floor(seconds/60)?Math.floor(seconds/60)+'분 ':'')+(seconds%60?seconds%60+'초 ':'')+'후':''):'';
+  const eta=['0','1','2'].includes(code)?'':r.eta;
   const distanceText=distance!==null?'('+distance+'역 전)':'';
   return {main:eta?`<em>${esc(eta)}</em> 도착`:distance>0?`<em>${distanceText}</em> ${esc(state)}`:esc(state),sub:eta?[distanceText,state!=='이동 중'?state:''].filter(Boolean).join(' '):'',distance};
 }
@@ -400,7 +314,8 @@ function platformNotes(r,direction,route){
   return `${terminal?`<b class="platform-terminal">${esc(terminal)}</b>`:''}${coverage?`<span class="coverage-label ${journey.reaches===false?'does-not-reach':''}">${esc(coverage)}</span>`:''}${location}${warning}${ageNote}`;
 }
 function diagramTrackDistance(row,direction){
-  const models=live.models.filter(m=>sameService(m.row,row));
+  if(row.locationUnknown||row.positionOffMap)return null;
+  const models=live.models.filter(m=>exactArrivalMatch(m.row,row));
   if(models.length===1){
     const model=models[0],position=modelPosition(model,performance.now());
     let distance=(selected-position)*model.sign;
@@ -423,7 +338,7 @@ function platformDiagram(rows,direction){
   const firstFresh=through.find(r=>!oldObservation(r)),orderUncertain=!!firstFresh&&through.some(r=>oldObservation(r)&&(platformDistance(r,direction)??Infinity)<=(platformDistance(firstFresh,direction)??Infinity));
   const outside=[];
   const candidates=rows.filter(r=>!hideTerminatingMarker(r,direction)).map(r=>({row:r,distance:diagramTrackDistance(r,direction)})).filter(x=>x.distance!==null&&x.distance>=0);
-  for(const {row:r,distance} of candidates.filter(x=>x.distance>4).slice(0,2)){outside.push(`<span class="platform-outside-train" data-outside-train="${esc(r.btrainNo||'')}"><img src="assets/train-line2-short.png" alt="열차" class="${left?'faces-left':''}"><span>#${esc(r.btrainNo||'')} · ${esc(r.positionStationName||reportedStation(r)||'위치 미제공')} · ${platformDistance(r,direction)}역 전<br>그림 범위 밖${oldObservation(r)?' · '+esc(observationAge(r)):''}</span></span>`);}
+  for(const {row:r,distance} of candidates.filter(x=>x.distance>4).slice(0,2)){outside.push(`<span class="platform-outside-train" data-outside-train="${esc(r.btrainNo||'')}"><img src="assets/train-line2-short.png" alt="열차" class="${left?'faces-left':''}"><span>#${esc(r.btrainNo||'')} · ${esc(r.positionStationName||'위치 미제공')} · ${platformDistance(r,direction)}역 전<br>그림 범위 밖${oldObservation(r)?' · '+esc(observationAge(r)):''}</span></span>`);}
   const markers=candidates.filter(x=>x.distance<=4).map(({row:r,distance},i)=>{
     const slot=left?distance:4-distance;
     const overlap=slots.includes(slot);slots.push(slot);
@@ -446,7 +361,9 @@ window.renderLive=()=>{
   let hasPositionArrivals=false,hasTerminatingArrivals=false;
   const cards=directions.map(direction=>{
     const reported=(data?.items||[]).map(r=>({...r,snapshotStale:!!data?.stale})).filter(r=>direction==='순환'||String(r.updnLine).includes(direction)||((direction==='상행'||direction==='하행')&&String(r.updnLine).includes(direction==='상행'?'내선':'외선')));
-    const approaching=upcomingArrivals(positionArrivalRows(stoppingArrivals(reported),direction));
+    const records=upcomingArrivals(positionArrivalRows(reported,direction));
+    const unlocated=records.filter(r=>r.locationUnknown);
+    const approaching=records.filter(r=>!r.locationUnknown);
     const allRows=onwardArrivals(approaching),oldRows=allRows.filter(oldObservation),rows=allRows;
     if(allRows.length<approaching.length)hasTerminatingArrivals=true;
     if(rows.some(r=>r.positionBased))hasPositionArrivals=true;
@@ -460,10 +377,11 @@ window.renderLive=()=>{
     const up=['상행','내선','순환'].includes(direction);
     const firstMessage=first?platformMessage(first,direction):null;
     const boardHeader=`<div class="platform-board-header"><h3><i class="detail-direction-triangle ${up?'direction-up':'direction-down'}" aria-hidden="true"></i>${directionName} <span aria-hidden="true">${up?'←':'→'}</span></h3>${first?`<span class="platform-current-label">${oldObservation(first)?'마지막 관측 열차':orderUncertain?'확인된 열차':'이번 열차'} <small>#${esc(first.btrainNo||'번호 미제공')}</small></span><div class="platform-badges">${platformDestination(first,direction)}</div>`:''}</div>`;
-    const main=first?`<div class="platform-main-status"><strong>${firstMessage.main}</strong>${firstMessage.sub?`<p>${esc(firstMessage.sub)}</p>`:''}<div class="platform-main-notes">${platformNotes(first,direction,route)}</div></div>`:`<p class="platform-empty">${esc(live.arrivalError||(data?(oldRows.length?'이전 관측 열차가 있어요. 아래에서 마지막 위치를 확인하세요.':approaching.length?'이 역 종착 열차를 제외한 도착정보가 없어요.':expired?'최신 위치정보를 확인할 수 없어요.':'현재 제공되는 도착정보가 없어요.'):'도착정보를 불러오는 중…'))}</p>`;
+    const main=first?`<div class="platform-main-status"><strong>${firstMessage.main}</strong>${firstMessage.sub?`<p>${esc(firstMessage.sub)}</p>`:''}<div class="platform-main-notes">${platformNotes(first,direction,route)}</div></div>`:`<p class="platform-empty">${esc(live.arrivalError||(unlocated.length?'도착정보는 아래 목록에서 확인하세요.':data?(oldRows.length?'이전 관측 열차가 있어요. 아래에서 마지막 위치를 확인하세요.':approaching.length?'이 역 종착 열차를 제외한 도착정보가 없어요.':expired?'최신 위치정보를 확인할 수 없어요.':'현재 제공되는 도착정보가 없어요.'):'도착정보를 불러오는 중…'))}</p>`;
     const nextRow=next?`<div class="platform-next-row"><span class="platform-next-label">${oldObservation(next)?'마지막 관측 열차':orderUncertain||oldObservation(first)?'확인된 열차':'다음 열차'} <small>#${esc(next.btrainNo||'번호 미제공')}</small></span><div class="platform-next-status"><strong>${platformMessage(next,direction).main}</strong>${platformMessage(next,direction).sub?`<small>${esc(platformMessage(next,direction).sub)}</small>`:''}</div><div class="platform-badges">${platformDestination(next,direction)}</div><div class="platform-next-notes">${platformNotes(next,direction,route)}</div></div>`:first?'<div class="platform-next-row platform-no-next">다음 열차 정보가 아직 없어요.</div>':'';
     const more=extra.length?`<details class="arrival-more" data-label="${esc(moreLabel)}" data-key="${esc(moreKey)}" data-count="${extra.length}" ${live.expandedArrivals.has(moreKey)?'open':''}><summary>${moreLabel}${live.expandedArrivals.has(moreKey)?'접기':'더 보기'} (${extra.length}대) <small>· 최대 4대</small></summary><div class="arrival-extra-grid">${extra.map((r,i)=>{const message=platformMessage(r,direction);return `<div class="arrival platform-extra-card"><div class="platform-extra-header"><b><i class="detail-direction-triangle ${up?'direction-up':'direction-down'}" aria-hidden="true"></i>${directionName} · ${oldObservation(r)?'이전 관측':(i+3)+'번째 열차'}</b><small>#${esc(r.btrainNo||'번호 미제공')}</small><div class="platform-badges">${platformDestination(r,direction)}</div></div><strong class="platform-extra-status">${message.main}</strong>${message.sub?`<p>${esc(message.sub)}</p>`:''}<p class="platform-extra-location">${oldObservation(r)?'마지막 위치':'현재위치'} ${esc(r.positionStationName||r.arvlMsg3||'정보 미제공')}</p><div class="platform-extra-notes">${platformNotes(r,direction,route)}</div></div>`}).join('')}</div></details>`:'';
-    return `<section class="direction-group platform-group ${up?'platform-up':'platform-down'}${recommended?' recommended':''}" aria-label="${directionName}${recommended?' · 목적지 추천 방향':''}"><div class="platform-board">${recommended?'<span class="platform-search-flag">검색한 구간</span>':''}${boardHeader}${proximityNotice}${main}${platformDiagram(approaching,direction)}${nextRow}</div>${more}</section>`;
+    const unknown=unlocated.length?`<div class="platform-unlocated"><strong>위치 미확인 열차 (${unlocated.length}대)</strong><div class="arrival-extra-grid">${unlocated.map(r=>{const message=platformMessage(r,direction);return `<div class="arrival platform-extra-card"><div class="platform-extra-header"><small>#${esc(r.btrainNo||'번호 미제공')}</small><div class="platform-badges">${platformDestination(r,direction)}</div></div><strong class="platform-extra-status">${message.main}</strong><p>${esc(message.sub)}</p></div>`}).join('')}</div></div>`:'';
+    return `<section class="direction-group platform-group ${up?'platform-up':'platform-down'}${recommended?' recommended':''}" aria-label="${directionName}${recommended?' · 목적지 추천 방향':''}"><div class="platform-board">${recommended?'<span class="platform-search-flag">검색한 구간</span>':''}${boardHeader}${proximityNotice}${main}${currentLine.positions===false?'':platformDiagram(approaching,direction)}${nextRow}</div>${more}${unknown}</section>`;
   }).join('');
   document.querySelector('#detail').innerHTML=`<div class="direction-grid">${cards}</div><p class="detail-caption">${live.arrivalError?esc(live.arrivalError)+'<br>':''}${data?'수신 '+stamp(data.updatedAt)+' · '+(old?'이전 정보 · 현재 상태와 다를 수 있어요':'서울시 제공 메시지 기준'):'연결 대기 중'}${expired?'<br>오래된 관측은 마지막 위치로 남겨두며, 현재 위치·도착시간은 확인이 필요해요.':''}${hasPositionArrivals?'<br>위치정보 기준 · 도착시간 미제공 열차는 역 수로 안내하며, 급행 추월 등으로 실제 도착 순서와 다를 수 있어요.':''}${hasTerminatingArrivals?'<br>이 역 종착 열차는 이번·다음 열차의 도착시간에서 제외해요.':''}${route?'<br>방향은 역 수 기준 · 열차별 종착역까지 확인해 안내합니다. 다른 구간 종착은 별도 확인이 필요해요.':''}</p><div class="detail-bottom">${paused?'갱신 일시정지 · ':''}실제 운행정보 · 10초 간격 확인</div>`;
   updateStatus();
@@ -487,8 +405,8 @@ function installArrivals(key,data){
   const old=new Map((previous?.items||[]).map(r=>[expressTrainKey(r.btrainNo)+':'+directionCode(r.updnLine)+':'+r.bstatnNm,r]));
   const items=(data.items||[]).map(r=>{const prior=old.get(expressTrainKey(r.btrainNo)+':'+directionCode(r.updnLine)+':'+r.bstatnNm);return prior&&observationTime(prior)>observationTime(r)?prior:r});
   live.arrivals.set(key,{...data,items});
-  if(currentLine.positions!==false)rebuildPositionModels();
 }
+
 async function loadArrivals(){
   if(document.hidden||paused)return;
   const name=names[selected],key=arrivalKey(),revision=live.revision,station=stationFor(name),cached=live.arrivals.get(key);

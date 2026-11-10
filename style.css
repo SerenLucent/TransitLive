@@ -187,3 +187,5 @@
 .platform-nearby-note{margin:12px 10px 0;padding:9px 10px;border:1px solid #d4b57b;border-radius:8px;background:#fff5df;color:#76531e;font-size:12px;line-height:1.5}
 
 .platform-outside-train{display:flex;align-items:center;gap:9px;margin:4px 0}.platform-outside-train>img{width:44px;height:29px;object-fit:contain;flex:none}.platform-outside-train>img.faces-left{transform:scaleX(-1)}
+
+.platform-unlocated{margin:12px 0 0;padding:12px;border:1px solid #dce6e1;border-radius:12px;background:#f7faf8}.platform-unlocated>strong{display:block;margin-bottom:8px;color:#456259;font-size:14px}.platform-unlocated .arrival{margin:0}
