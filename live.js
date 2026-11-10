@@ -1,6 +1,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbywd2G3p28QAjvitir-FBqcOX8up43T_N8LUA--QKCOKC7m7Bheq5TDLPlj6lraKWIOnA/exec';
 const LIVE_REFRESH_MS = 10000;
-const live = {positions:null, arrivals:new Map(), error:'', arrivalError:'', busy:false, timer:null, nextRefreshAt:0, models:[], pending:new Map(), destination:null,revision:0,expandedArrivals:new Set(),diagnostics:[]};
+const MISSING_TRAIN_GRACE_MS = 30000;
+const live = {positions:null, arrivals:new Map(), lastPositions:new Map(), error:'', arrivalError:'', busy:false, timer:null, nextRefreshAt:0, models:[], pending:new Map(), destination:null,revision:0,expandedArrivals:new Set(),diagnostics:[]};
 const esc = v => String(v == null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const wrap = p => currentRoute.loop?(p%names.length+names.length)%names.length:Math.max(0,Math.min(names.length-1,p));
 const arrivalKey=()=>currentLine.number+':'+names[selected];
@@ -35,15 +36,27 @@ function installPositions(data){
 }
 function rebuildPositionModels(){
   const now=performance.now();
-  live.models=sharedPositionRows().flatMap(r=>{
+  const previous=new Map(live.models.map(m=>[m.id,m]));
+  live.models=sharedPositionRows([],true).flatMap(r=>{
     if(r.locationUncertain)return [];
     const location=mapLocation(r);if(!location)return [];
     const {sign,target}=location;
-    const id=String(r.trainNo)+':'+r.updnLine;
+    const id=positionKey(r);
     return [{id,row:r,sign,from:target,delta:0,since:now}];
   });
-  trains.replaceChildren();
-  live.models.forEach(m=>{const express=expressStopInfo(currentLine.number,m.row,names[selected]).express;const el=document.createElement('div');el.className='train '+(express?'express-train ':'')+(String(m.row.updnLine)==='0'?'train-up':'train-down')+(terminalInfo(m.row.statnTnm).shortTurn?' short-turn':'');el.innerHTML=trainIcon+'<span class="train-direction-arrow"></span>'+(express?'<span class="map-express-badge">급행</span>':'');el.setAttribute('aria-hidden','true');el.title=(express?'급행 ':'')+'열차 '+m.row.trainNo+' · '+m.row.statnNm+' · '+(m.row.statnTnm||'종착역 미제공');m.el=el;trains.append(el)});
+  live.models.forEach(m=>{
+    const express=expressStopInfo(currentLine.number,m.row,names[selected]).express;
+    const existing=previous.get(m.id),el=existing?.el||document.createElement('div');
+    previous.delete(m.id);
+    el.className='train '+(express?'express-train ':'')+(String(m.row.updnLine)==='0'?'train-up':'train-down')+(terminalInfo(m.row.statnTnm).shortTurn?' short-turn':'');
+    if(!existing||existing.express!==express){
+      el.innerHTML=trainIcon+'<span class="train-direction-arrow"></span>'+(express?'<span class="map-express-badge">급행</span>':'');
+    }
+    el.setAttribute('aria-hidden','true');m.el=el;m.express=express;
+    if(!existing)trains.append(el);
+  });
+  previous.forEach(m=>m.el.remove());
+  window.paintLive(now);
 }
 function mapLocation(row){
   const index=names.indexOf(positionStation(row));if(index<0)return null;
@@ -97,11 +110,10 @@ function trainJourney(row,direction){
 }
 window.paintLive=now=>{
   live.models.forEach(m=>{
-    m.el.hidden=!usableObservation(m.row);
-    m.el.classList.toggle('observation-old',oldObservation(m.row));
+    m.el.hidden=!usableObservation(m.row)||(m.row.missingUntil!=null&&Date.now()>=m.row.missingUntil);
     m.el.title='열차 '+m.row.trainNo+' · '+positionStation(m.row)+' · '+observationAge(m.row)+(oldObservation(m.row)?' · 현재 위치 확인 필요':'');
     const p=modelPosition(m,now),q=positionAt(p),a=positionAt(wrap(p+m.sign*.015)),angle=Math.atan2(a.y-q.y,a.x-q.x);
-    m.el.style.setProperty('--badge-rotation',(-angle*180/Math.PI)+'deg');
+    m.el.style.setProperty?.('--badge-rotation',(-angle*180/Math.PI)+'deg');
     m.el.style.left=q.x+'px';m.el.style.top=(q.y+(m.sign>0?-13:13))+'px';m.el.style.transform=`translate(-50%,-50%) rotate(${angle*180/Math.PI}deg)`;m.el.firstElementChild.style.transform=Math.cos(angle)<0?'scaleY(-1)':'none';
   });
 };
@@ -169,6 +181,9 @@ function sameService(position,row){
   const terminal=terminalInfo(row.bstatnNm||row.statnTnm).name;
   return !terminal||!position.statnTnm||terminalInfo(position.statnTnm).name===terminal;
 }
+function positionKey(row){
+  return [currentLine.number,expressTrainKey(row.trainNo||row.btrainNo),directionCode(row.updnLine),terminalInfo(row.statnTnm||row.bstatnNm).name].join(':');
+}
 function reportedStation(row){
   const known=[...new Set([...names,...currentLine.stations.map(s=>s.name)])].sort((a,b)=>b.length-a.length);
   for(const value of [row.arvlMsg3,row.arvlMsg2]){
@@ -204,7 +219,7 @@ function arrivalLocation(row,station){
   if(!name)return null;
   return {trainNo:row.btrainNo,updnLine:direction,statnNm:name,statnTnm:row.bstatnNm,trainSttus:status??'unknown',recptnDt:row.recptnDt,source:'arrivals',arrivalRow:row,snapshotStale:!!row.snapshotStale};
 }
-function sharedPositionRows(extra=[]){
+function sharedPositionRows(extra=[],remember=false){
   const rows=availablePositionRows().map(r=>({...r,source:'positions'}));
   const add=(items,station)=>{for(const row of items){const candidate=arrivalLocation(row,station);if(!candidate)continue;
     const matches=rows.map((p,i)=>sameService(p,row)?i:-1).filter(i=>i>=0);
@@ -222,7 +237,28 @@ function sharedPositionRows(extra=[]){
   }};
   for(const [key,data] of live.arrivals){if(!key.startsWith(currentLine.number+':'))continue;add((data.items||[]).map(r=>({...r,snapshotStale:!!data.stale})),key.slice(key.indexOf(':')+1));}
   add(extra,names[selected]);
-  return rows;
+  return keepLastPositions(rows,remember);
+}
+// Keep the latest accepted observation across gaps in either feed. After the
+// short display grace, retain its timestamp so an older cached row cannot return.
+function keepLastPositions(rows,remember){
+  const now=Date.now(),prefix=currentLine.number+':',available=new Map(rows.map(row=>[positionKey(row),row]));
+  for(const [key,entry] of live.lastPositions){
+    if(!usableObservation(entry.row)){if(remember)live.lastPositions.delete(key);continue;}
+    if(!key.startsWith(prefix))continue;
+    const row=available.get(key);
+    if(row&&!row.locationUncertain&&observationTime(row)>=observationTime(entry.row))continue;
+    const missingUntil=entry.missingUntil??now+MISSING_TRAIN_GRACE_MS;
+    if(remember)entry.missingUntil=missingUntil;
+    const atTerminus=positionStation(entry.row)===terminalInfo(entry.row.statnTnm).name&&['1','2'].includes(String(entry.row.trainSttus));
+    const reassigned=rows.some(next=>positionKey(next)!==key&&expressTrainKey(next.trainNo)===expressTrainKey(entry.row.trainNo)&&observationTime(next)>observationTime(entry.row));
+    if(now<missingUntil&&!atTerminus&&!reassigned)available.set(key,{...entry.row,snapshotStale:true,missingUntil});
+    else if(!row?.locationUncertain)available.delete(key);
+  }
+  if(remember)for(const [key,row] of available){
+    if(!row.locationUncertain&&row.missingUntil==null&&expressTrainKey(row.trainNo))live.lastPositions.set(key,{row});
+  }
+  return [...available.values()];
 }
 function stoppingArrivals(items){
   const positions=sharedPositionRows(items);
@@ -234,11 +270,16 @@ function stoppingArrivals(items){
     const position=matches.length===1?matches[0]:null;
     let row={...r,isExpress:info.express};
     if(position)row={...row,positionWarning:position.locationWarning,locationUncertain:position.locationUncertain,snapshotStale:!!position.snapshotStale};
-    if(!position)return [row];
+    if(!position){
+      const last=live.lastPositions.get(positionKey(r));
+      return last&&usableObservation(last.row)&&observationTime(last.row)>observationTime(r)?[]:[row];
+    }
     const origin=positionStation(position),status=String(position.trainSttus),rowTime=observationTime(r),posTime=observationTime(position);
     // A newer arrival row remains intact; its projected location is shared by the map.
-    if(position.source==='arrivals'&&rowTime===posTime)return [{...row,positionStationName:origin,positionReceivedAt:position.recptnDt}];
-    if(rowTime&&rowTime>posTime)return [row];
+    if(position.missingUntil==null){
+      if(position.source==='arrivals'&&rowTime===posTime)return [{...row,positionStationName:origin,positionReceivedAt:position.recptnDt}];
+      if(rowTime&&rowTime>posTime)return [row];
+    }
     row={...row,positionStationName:origin,positionReceivedAt:position.recptnDt};
     if(origin===names[selected]){
       if(status==='2')return [];
@@ -285,7 +326,7 @@ function positionArrivalRows(items,direction){
     const code=distance===0?(status==='1'?'1':status==='3'?'3':'0'):'99';
     rows.push({updnLine:direction,btrainNo:position.trainNo,bstatnNm:position.statnTnm,arvlCd:code,
       arvlMsg2:distance===0?(status==='1'?'도착 · 정차 중':status==='3'?'전역 출발':'역 진입'):distance+'개 역 전',
-      arvlMsg3:origin,positionStationName:origin,positionReceivedAt:position.recptnDt,positionDistance:distance,positionStatus:status,positionBased:true,isExpress:stop.express,directAt:position.directAt,positionWarning:position.locationWarning,locationUncertain:position.locationUncertain});
+      arvlMsg3:origin,positionStationName:origin,positionReceivedAt:position.recptnDt,positionDistance:distance,positionStatus:status,positionBased:true,isExpress:stop.express,directAt:position.directAt,positionWarning:position.locationWarning,locationUncertain:position.locationUncertain,snapshotStale:!!position.snapshotStale});
     known.add(id);
   }
   return rows;
