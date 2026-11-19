@@ -46,13 +46,23 @@ setImmediate(()=>{
  ctx.installPositions({updatedAt:base+3,items:[]});
  assert.equal(active('5045').row.statnNm,'행신');assert.equal(active('5045').el,icon);
  assert(ctx.oldObservation(detail([latest])[0]));
- assert.doesNotMatch(ctx.platformMessage(detail([latest])[0],'하행').main,/1분 30초/);
+ assert.doesNotMatch(ctx.platformMessage(detail([latest])[0],'하행').main,/마지막 관측/);
  vm.runInContext('live.lastPositions.get("63:5045:1:용문").missingUntil=Date.now()-1',ctx);
  ctx.installPositions({updatedAt:base+4,items:[]});
  assert(!active('5045'),'expiry cannot revive the station feed as a position');
  assert(detail([latest])[0].locationUnknown,'an ETA remains usable without a position after expiry');
  ctx.installPositions({updatedAt:base+5,items:[pos('강매',0,{trainSttus:'2'})]});
  assert.equal(detail([latest]).length,0,'a position-confirmed departure does not reappear as an arrival-only service');
+ // A Seoul-origin train must compete with mainline trains before merging at Gajwa.
+ ctx.selected=ctx.names.indexOf('가좌');
+ ctx.installPositions({updatedAt:base+6,items:[pos('신촌',0,{trainNo:'branch',updnLine:'0',statnTnm:'문산'}),pos('이촌',0,{trainNo:'main',updnLine:'0',statnTnm:'문산'})]});
+ const branchRows=detail([],'상행');
+ assert.equal(branchRows[0].btrainNo,'branch');assert.equal(branchRows[0].positionDistance,1);
+ assert(branchRows[0].positionOffMap);assert.match(ctx.platformDiagram(branchRows,'상행'),/data-branch-train="branch"/);
+ assert.match(ctx.platformDiagram(branchRows,'상행'),/신촌 → 가좌/);
+ ctx.selected=ctx.names.indexOf('수색');
+ assert.equal(detail([],'상행')[0].positionDistance,3);
+ ctx.selected=ctx.names.indexOf('강매');
  ctx.currentLine={...ctx.lineFixture,positions:false};
  const only=detail([latest]);assert.equal(only.length,1);assert(only[0].locationUnknown);assert.equal(only[0].eta,'1분 30초 후');
  ctx.window.renderLive();assert.doesNotMatch(el('#detail').innerHTML,/class="platform-diagram"/);
